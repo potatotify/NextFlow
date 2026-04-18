@@ -968,12 +968,6 @@ const WorkflowCanvasInternal: FC = () => {
           openNodePicker();
         }
       }}
-      onContextMenu={(event) => {
-        if (nodes.length === 0) {
-          event.preventDefault();
-          openNodePicker();
-        }
-      }}
     >
       {message ? (
         <div className="pointer-events-none absolute left-1/2 top-3 z-30 -translate-x-1/2 rounded-md border border-[#3f2226] bg-[#1a1114] px-3 py-2 text-sm text-[#f88f9f]">
@@ -1105,10 +1099,16 @@ const WorkflowCanvasInternal: FC = () => {
 
       {nodes.length === 0 ? (
         <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center text-center">
-          <div>
-            <h2 className="text-[34px] font-semibold tracking-[-0.02em] text-[#8f919a]">Add a node</h2>
-            <p className="mt-2 text-[15px] text-[#626673]">Double click, right click, or press N</p>
-            <p className="mt-2 text-[12px] text-[#565b67]">Tip: Use Load Sample Workflow from the left sidebar.</p>
+          <div className="flex flex-col items-center gap-1.5 text-center">
+            <p className="text-lg font-normal text-(--nf-text) opacity-85">Add a node</p>
+            <div className="text-lg flex items-center gap-1.5 text-(--nf-text-secondary) opacity-80">
+              <span>Double click, right click, or press</span>
+              <div className="flex items-center gap-1">
+                <span className="flex h-5 min-w-5 w-fit items-center justify-center rounded-md border border-(--nf-border) bg-(--nf-hover) px-1.5 text-[11px] font-semibold leading-none text-(--nf-text-secondary)">
+                  N
+                </span>
+              </div>
+            </div>
           </div>
         </div>
       ) : null}
@@ -1406,6 +1406,10 @@ const WorkflowCanvasInternal: FC = () => {
         onConnectStart={() => setIsConnectingNodes(true)}
         onConnectEnd={() => setIsConnectingNodes(false)}
         onPaneClick={closeContextMenu}
+        onPaneContextMenu={(event) => {
+          event.preventDefault();
+          openNodePicker();
+        }}
         defaultViewport={defaultViewport}
         edgeTypes={edgeTypes}
         nodeTypes={nodeTypes}
