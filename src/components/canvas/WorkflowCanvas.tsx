@@ -375,6 +375,7 @@ const WorkflowCanvasInternal: FC = () => {
   const onSelectionChange = useCallback(
     (selection: OnSelectionChangeParams) => {
       setSelectedNodes(selection.nodes.map((node) => node.id));
+      setCommittedSelectionRect(null);
     },
     [setSelectedNodes],
   );
@@ -909,7 +910,7 @@ const WorkflowCanvasInternal: FC = () => {
 
   const defaultViewport = useMemo(() => ({ x: 0, y: 0, zoom: 0.8 }), []);
   const shouldShowCutCursor = toolbarMode === "cut" && cutCursorPoint !== null && !isNodeInteractionActive;
-  const hasSelectedNodes = selectedNodes.length > 0 || committedSelectionRect !== null;
+  const hasSelectedNodes = committedSelectionRect !== null && selectedNodes.length > 1;
   const selectionToolbarStyle = useMemo(() => {
     const rect = committedSelectionRect ?? activeSelectionRect;
     if (!rect) return { left: 16, top: 16 };
