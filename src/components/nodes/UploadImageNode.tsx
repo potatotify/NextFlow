@@ -15,43 +15,58 @@ export const UploadImageNode = ({ id, data, selected }: NodeProps) => {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const previewUrlRef = useRef<string | null>(null);
   const [previewSource, setPreviewSource] = useState<string | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
 
-  const readImageAsDataUrl = useCallback((file: File): Promise<string> => {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => {
-        if (typeof reader.result === "string") {
-          resolve(reader.result);
-          return;
-        }
+  const uploadImageFile = useCallback(async (file: File): Promise<string> => {
+    const formData = new FormData();
+    formData.append("file", file);
 
-        reject(new Error("Failed to read image file."));
-      };
-      reader.onerror = () => reject(new Error("Failed to read image file."));
-      reader.readAsDataURL(file);
+    const response = await fetch("/api/media/upload/image", {
+      method: "POST",
+      body: formData,
     });
+
+    const payload = (await response.json().catch(() => null)) as { error?: string; url?: string } | null;
+    if (!response.ok || !payload?.url) {
+      throw new Error(payload?.error ?? "Failed to upload image.");
+    }
+
+    return payload.url;
   }, []);
 
   const onPickImage = useCallback(
     async (event: ChangeEvent<HTMLInputElement>) => {
-      const file = event.target.files?.[0];
+      const inputElement = event.currentTarget;
+      const file = inputElement.files?.[0];
       if (!file) return;
 
-      const imageDataUrl = await readImageAsDataUrl(file);
+      setUploadError(null);
+      setIsUploading(true);
       const previewUrl = URL.createObjectURL(file);
 
       if (previewUrlRef.current) {
         URL.revokeObjectURL(previewUrlRef.current);
       }
       previewUrlRef.current = previewUrl;
-
-      updateNodeData(id, {
-        imageUrl: imageDataUrl,
-        imageName: file.name,
-      });
       setPreviewSource(previewUrl);
+
+      try {
+        const uploadedImageUrl = await uploadImageFile(file);
+        updateNodeData(id, {
+          imageUrl: uploadedImageUrl,
+          imageName: file.name,
+        });
+      } catch (error) {
+        const message = error instanceof Error ? error.message : "Failed to upload image.";
+        setUploadError(message);
+      } finally {
+        setIsUploading(false);
+      }
+
+      inputElement.value = "";
     },
-    [id, readImageAsDataUrl, updateNodeData],
+    [id, updateNodeData, uploadImageFile],
   );
 
   useEffect(() => {
@@ -87,12 +102,19 @@ export const UploadImageNode = ({ id, data, selected }: NodeProps) => {
         <button
           type="button"
           onClick={() => fileInputRef.current?.click()}
+          disabled={isUploading}
           className="flex w-full cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-[#33353a] bg-[#0f1014] px-3 py-4 text-center transition hover:border-[#4b4e56] hover:bg-[#13151b]"
         >
           <ImagePlus className="h-4 w-4 text-[#9ca3af]" />
-          <span className="text-[12px] text-[#cfd3dc]">Choose image</span>
+          <span className="text-[12px] text-[#cfd3dc]">{isUploading ? "Uploading..." : "Choose image"}</span>
           <span className="text-[11px] text-[#6b7280]">PNG, JPG, WEBP</span>
         </button>
+      ) : null}
+
+      {uploadError ? (
+        <div className="mt-2 rounded-lg border border-[#4a2328] bg-[#1b1113] px-2 py-1.5 text-[11px] text-[#ffb4be]">
+          {uploadError}
+        </div>
       ) : null}
 
       {previewSource ? (

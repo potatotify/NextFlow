@@ -429,6 +429,16 @@ const WorkflowCanvasInternal: FC = () => {
   }, [closePopovers, isNodeInteractionActive]);
 
   useEffect(() => {
+    if (!message) return;
+
+    const timeout = window.setTimeout(() => {
+      setMessage(null);
+    }, 3500);
+
+    return () => window.clearTimeout(timeout);
+  }, [message]);
+
+  useEffect(() => {
     if (nodes.length > 0) return;
 
     // When the last node is removed while hovering/dragging, React Flow may not emit
@@ -520,7 +530,6 @@ const WorkflowCanvasInternal: FC = () => {
 
     const selectedIds = selectedNodes.filter((nodeId) => nodes.some((node) => node.id === nodeId));
     if (selectedIds.length === 0) {
-      setMessage("Select at least one node to run.");
       return;
     }
 

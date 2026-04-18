@@ -15,43 +15,59 @@ export const UploadVideoNode = ({ id, data, selected }: NodeProps) => {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const previewUrlRef = useRef<string | null>(null);
   const [previewSource, setPreviewSource] = useState<string | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
 
-  const readVideoAsDataUrl = useCallback((file: File): Promise<string> => {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => {
-        if (typeof reader.result === "string") {
-          resolve(reader.result);
-          return;
-        }
-
-        reject(new Error("Failed to read video file."));
-      };
-      reader.onerror = () => reject(new Error("Failed to read video file."));
-      reader.readAsDataURL(file);
+  const uploadVideoFile = useCallback(async (file: File): Promise<string> => {
+    const response = await fetch("/api/media/upload/video", {
+      method: "POST",
+      body: file,
+      headers: {
+        "content-type": file.type || "application/octet-stream",
+        "x-file-name": file.name,
+        "x-file-type": file.type || "video/mp4",
+      },
     });
+
+    const payload = (await response.json().catch(() => null)) as { error?: string; url?: string } | null;
+    if (!response.ok || !payload?.url) {
+      throw new Error(payload?.error ?? "Failed to upload video.");
+    }
+
+    return payload.url;
   }, []);
 
   const onPickVideo = useCallback(
     async (event: ChangeEvent<HTMLInputElement>) => {
-      const file = event.target.files?.[0];
+      const inputElement = event.currentTarget;
+      const file = inputElement.files?.[0];
       if (!file) return;
-
-      const videoDataUrl = await readVideoAsDataUrl(file);
+      setUploadError(null);
+      setIsUploading(true);
       const previewUrl = URL.createObjectURL(file);
 
       if (previewUrlRef.current) {
         URL.revokeObjectURL(previewUrlRef.current);
       }
       previewUrlRef.current = previewUrl;
-
-      updateNodeData(id, {
-        videoUrl: videoDataUrl,
-        videoName: file.name,
-      });
       setPreviewSource(previewUrl);
+
+      try {
+        const uploadedVideoUrl = await uploadVideoFile(file);
+        updateNodeData(id, {
+          videoUrl: uploadedVideoUrl,
+          videoName: file.name,
+        });
+      } catch (error) {
+        const message = error instanceof Error ? error.message : "Failed to upload video.";
+        setUploadError(message);
+      } finally {
+        setIsUploading(false);
+      }
+
+      inputElement.value = "";
     },
-    [id, readVideoAsDataUrl, updateNodeData],
+    [id, updateNodeData, uploadVideoFile],
   );
 
   useEffect(() => {
@@ -121,12 +137,19 @@ export const UploadVideoNode = ({ id, data, selected }: NodeProps) => {
         <button
           type="button"
           onClick={() => fileInputRef.current?.click()}
+          disabled={isUploading}
           className="flex w-full cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-[#33353a] bg-[#0f1014] px-3 py-4 text-center transition hover:border-[#4b4e56] hover:bg-[#13151b]"
         >
           <Video className="h-4 w-4 text-[#9ca3af]" />
-          <span className="text-[12px] text-[#cfd3dc]">Choose video</span>
+          <span className="text-[12px] text-[#cfd3dc]">{isUploading ? "Uploading..." : "Choose video"}</span>
           <span className="text-[11px] text-[#6b7280]">MP4, MOV, WEBM</span>
         </button>
+      ) : null}
+
+      {uploadError ? (
+        <div className="mt-2 rounded-lg border border-[#4a2328] bg-[#1b1113] px-2 py-1.5 text-[11px] text-[#ffb4be]">
+          {uploadError}
+        </div>
       ) : null}
 
       {previewSource ? (
