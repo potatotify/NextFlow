@@ -1,0 +1,200 @@
+/*
+Font families defined by this CSS:
+
+- "Suisse Intl"                   default
+- "Suisse Mono"                   mono
+
+Use like this in your CSS:
+
+  :root { font-family: 'Suisse Intl', sans-serif; }
+  @supports (font-variation-settings: normal) {
+    :root { font-family: 'Suisse Intl Mono', sans-serif; }
+  }
+
+------------------------- static ------------------------- */
+
+@font-face {
+    font-family: 'Suisse Intl';
+    font-style: normal;
+    font-weight: 100;
+    font-display: swap;
+    src: url('./SuisseIntl-Ultralight-WebM.woff2') format('woff2');
+}
+
+@font-face {
+    font-family: 'Suisse Intl';
+    font-style: italic;
+    font-weight: 100;
+    font-display: swap;
+    src: url('./SuisseIntl-UltraLightItalic-WebM.woff2') format('woff2');
+}
+
+@font-face {
+    font-family: 'Suisse Intl';
+    font-style: normal;
+    font-weight: 200;
+    font-display: swap;
+    src: url('./SuisseIntl-Thin-WebM.woff2') format('woff2');
+}
+
+@font-face {
+    font-family: 'Suisse Intl';
+    font-style: italic;
+    font-weight: 200;
+    font-display: swap;
+    src: url('./SuisseIntl-ThinItalic-WebM.woff2') format('woff2');
+}
+
+@font-face {
+    font-family: 'Suisse Intl';
+    font-style: normal;
+    font-weight: 300;
+    font-display: swap;
+    src: url('./SuisseIntl-Light-WebM.woff2') format('woff2');
+}
+
+@font-face {
+    font-family: 'Suisse Intl';
+    font-style: italic;
+    font-weight: 300;
+    font-display: swap;
+    src: url('./SuisseIntl-LightItalic-WebM.woff2') format('woff2');
+}
+
+@font-face {
+    font-family: 'Suisse Intl';
+    font-style: normal;
+    font-weight: 400;
+    font-display: swap;
+    src: url('./SuisseIntl-Regular-WebM.woff2') format('woff2');
+}
+
+@font-face {
+    font-family: 'Suisse Intl';
+    font-style: italic;
+    font-weight: 400;
+    font-display: swap;
+    src: url('./SuisseIntl-Italic-WebM.woff2') format('woff2');
+}
+
+@font-face {
+    font-family: 'Suisse Intl';
+    font-style: normal;
+    font-weight: 450;
+    font-display: swap;
+    src: url('./SuisseIntl-Book-WebM.woff2') format('woff2');
+}
+
+@font-face {
+    font-family: 'Suisse Intl';
+    font-style: italic;
+    font-weight: 450;
+    font-display: swap;
+    src: url('./SuisseIntl-BookItalic-WebM.woff2') format('woff2');
+}
+
+@font-face {
+    font-family: 'Suisse Intl';
+    font-style: normal;
+    font-weight: 500;
+    font-display: swap;
+    src: url('./SuisseIntl-Medium-WebM.woff2') format('woff2');
+}
+
+@font-face {
+    font-family: 'Suisse Intl';
+    font-style: italic;
+    font-weight: 500;
+    font-display: swap;
+    src: url('./SuisseIntl-MediumItalic-WebM.woff2') format('woff2');
+}
+
+@font-face {
+    font-family: 'Suisse Intl';
+    font-style: normal;
+    font-weight: 600;
+    font-display: swap;
+    src: url('./SuisseIntl-SemiBold-WebM.woff2') format('woff2');
+}
+
+@font-face {
+    font-family: 'Suisse Intl';
+    font-style: italic;
+    font-weight: 600;
+    font-display: swap;
+    src: url('./SuisseIntl-SemiBoldItalic-WebM.woff2') format('woff2');
+}
+
+@font-face {
+    font-family: 'Suisse Intl';
+    font-style: normal;
+    font-weight: 700;
+    font-display: swap;
+    src: url('./SuisseIntl-Bold-WebM.woff2') format('woff2');
+}
+
+@font-face {
+    font-family: 'Suisse Intl';
+    font-style: italic;
+    font-weight: 700;
+    font-display: swap;
+    src: url('./SuisseIntl-BoldItalic-WebM.woff2') format('woff2');
+}
+
+@font-face {
+    font-family: 'Suisse Intl';
+    font-style: normal;
+    font-weight: 800;
+    font-display: swap;
+    src: url('./SuisseIntl-Black-WebM.woff2') format('woff2');
+}
+
+@font-face {
+    font-family: 'Suisse Intl';
+    font-style: italic;
+    font-weight: 800;
+    font-display: swap;
+    src: url('./SuisseIntl-BlackItalic-WebM.woff2') format('woff2');
+}
+
+@font-face {
+    font-family: 'Suisse Intl';
+    font-style: normal;
+    font-weight: 900;
+    font-display: swap;
+    src: url('./SuisseIntl-Black-WebM.woff2') format('woff2');
+}
+
+@font-face {
+    font-family: 'Suisse Intl';
+    font-style: italic;
+    font-weight: 900;
+    font-display: swap;
+    src: url('./SuisseIntl-BlackItalic-WebM.woff2') format('woff2');
+}
+
+/* ----------------------- variable ----------------------- */
+
+@font-face {
+    font-family: 'Suisse Intl Mono';
+    font-style: normal;
+    font-weight: 200;
+    font-display: swap;
+    src: url('./SuisseIntlMono-Thin-WebS.woff2') format('woff2');
+}
+
+@font-face {
+    font-family: 'Suisse Intl Mono';
+    font-style: normal;
+    font-weight: 400;
+    font-display: swap;
+    src: url('./SuisseIntlMono-Regular-WebS.woff2') format('woff2');
+}
+
+@font-face {
+    font-family: 'Suisse Intl Mono';
+    font-style: normal;
+    font-weight: 700;
+    font-display: swap;
+    src: url('./SuisseIntlMono-Bold-WebS.woff2') format('woff2');
+}

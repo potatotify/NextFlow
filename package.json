@@ -1,0 +1,60 @@
+{
+  "name": "nextflow",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint",
+    "db:push": "prisma db push",
+    "db:generate": "prisma generate",
+    "trigger:dev": "npx trigger.dev@latest dev . --config trigger.config.mjs --env-file .env.local --skip-update-check",
+    "trigger:deploy": "npx trigger.dev@latest deploy . --config trigger.config.mjs --env-file .env.local --native-build-server --skip-update-check"
+  },
+  "dependencies": {
+    "@clerk/nextjs": "^7.2.1",
+    "@google/generative-ai": "^0.24.1",
+    "@prisma/adapter-pg": "^7.7.0",
+    "@prisma/client": "^7.7.0",
+    "@radix-ui/react-dialog": "^1.1.15",
+    "@radix-ui/react-dropdown-menu": "^2.1.16",
+    "@radix-ui/react-scroll-area": "^1.2.10",
+    "@radix-ui/react-tooltip": "^1.2.8",
+    "@trigger.dev/sdk": "4.4.4",
+    "@xyflow/react": "^12.10.2",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
+    "dotenv": "^17.4.2",
+    "ffmpeg-static": "^5.3.0",
+    "import-in-the-middle": "^3.0.1",
+    "lucide-react": "^1.8.0",
+    "next": "16.2.3",
+    "pg": "^8.20.0",
+    "prisma": "^7.7.0",
+    "react": "19.2.4",
+    "react-dom": "19.2.4",
+    "reactflow": "^11.11.4",
+    "sharp": "^0.34.5",
+    "tailwind-merge": "^3.5.0",
+    "transloadit": "^4.8.2",
+    "zod": "^4.3.6",
+    "zustand": "^5.0.12"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4",
+    "@types/node": "^20",
+    "@types/pg": "^8.20.0",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "eslint": "^9",
+    "eslint-config-next": "16.2.3",
+    "tailwindcss": "^4",
+    "tsx": "^4.21.0",
+    "typescript": "^5"
+  },
+  "packageManager": "pnpm@10.23.0+sha512.21c4e5698002ade97e4efe8b8b4a89a8de3c85a37919f957e7a0f30f38fbc5bbdd05980ffe29179b2fb6e6e691242e098d945d1601772cad0fef5fb6411e2a4b",
+  "prisma": {
+    "seed": "tsx prisma/seed.ts"
+  }
+}
