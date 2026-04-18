@@ -7,7 +7,7 @@ interface NodeStatusProps {
 }
 
 const statusClassByValue: Record<NodeExecutionStatus, string> = {
-  idle: "bg-[#6b7280]",
+  idle: "bg-(--nf-text-secondary)",
   running: "bg-[#f59e0b] animate-pulse",
   success: "bg-[#22c55e]",
   error: "bg-[#ef4444]",

@@ -138,32 +138,32 @@ export const UploadVideoNode = ({ id, data, selected }: NodeProps) => {
           type="button"
           onClick={() => fileInputRef.current?.click()}
           disabled={isUploading}
-          className="flex w-full cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-[#33353a] bg-[#0f1014] px-3 py-4 text-center transition hover:border-[#4b4e56] hover:bg-[#13151b]"
+          className="flex w-full cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-(--nf-input-border) bg-(--nf-input-bg) px-3 py-4 text-center transition hover:border-(--nf-input-focus) hover:bg-(--nf-surface)"
         >
-          <Video className="h-4 w-4 text-[#9ca3af]" />
-          <span className="text-[12px] text-[#cfd3dc]">{isUploading ? "Uploading..." : "Choose video"}</span>
-          <span className="text-[11px] text-[#6b7280]">MP4, MOV, WEBM</span>
+          <Video className="h-4 w-4 text-(--nf-text-secondary)" />
+          <span className="text-[12px] text-(--nf-text)">{isUploading ? "Uploading..." : "Choose video"}</span>
+          <span className="text-[11px] text-(--nf-text-secondary)">MP4, MOV, WEBM</span>
         </button>
       ) : null}
 
       {uploadError ? (
-        <div className="mt-2 rounded-lg border border-[#4a2328] bg-[#1b1113] px-2 py-1.5 text-[11px] text-[#ffb4be]">
+        <div className="mt-2 rounded-lg border border-(--nf-danger-border) bg-(--nf-danger-bg) px-2 py-1.5 text-[11px] text-(--nf-danger-text)">
           {uploadError}
         </div>
       ) : null}
 
       {previewSource ? (
-        <div className="relative mt-3 overflow-hidden rounded-xl border border-[#2b2b2b] bg-[#0e0f12]">
+        <div className="relative mt-3 overflow-hidden rounded-xl border border-(--nf-border) bg-(--nf-surface)">
           <button
             type="button"
             onClick={() => fileInputRef.current?.click()}
-            className="absolute right-2 top-2 z-10 inline-flex h-7 w-7 items-center justify-center rounded-md border border-[#2f323a] bg-[#13161dcc] text-[#e5e7eb] transition hover:bg-[#1b1f28]"
+            className="absolute right-2 top-2 z-10 inline-flex h-7 w-7 items-center justify-center rounded-md border border-(--nf-border) bg-(--nf-panel) text-(--nf-text) transition hover:bg-(--nf-hover)"
             aria-label="Edit video"
           >
             <Pencil className="h-3.5 w-3.5" />
           </button>
           <video src={previewSource} controls className="h-32 w-full bg-black object-cover" preload="metadata" />
-          <p className="truncate border-t border-[#23252a] px-2 py-1.5 text-[11px] text-[#9ca3af]">{nodeData.videoName}</p>
+          <p className="truncate border-t border-(--nf-border) px-2 py-1.5 text-[11px] text-(--nf-text-secondary)">{nodeData.videoName}</p>
         </div>
       ) : null}
     </NodeWrapper>

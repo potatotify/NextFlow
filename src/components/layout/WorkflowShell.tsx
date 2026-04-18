@@ -379,7 +379,7 @@ export const WorkflowShell: FC<WorkflowShellProps> = ({ children }) => {
 
         <section className="flex min-w-0 flex-1 flex-col">
           <WorkflowPersistence />
-          <div className="relative min-h-0 flex-1 overflow-hidden bg-[#101010]">
+          <div className="relative min-h-0 flex-1 overflow-hidden bg-(--nf-bg)">
             {children}
             <TopBar
               workflowName={workflowName}

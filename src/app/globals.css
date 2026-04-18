@@ -53,6 +53,55 @@
   --nf-text-secondary: #8b8b8f;
   --nf-hover: #212226;
   --nf-focus: #3b82f680;
+  --nf-input-bg: #0f1014;
+  --nf-input-border: #2b2b2b;
+  --nf-input-focus: #3b3b3b;
+  --nf-soft-panel: #10131a;
+  --nf-soft-border: #262a31;
+  --nf-danger-bg: #1b1113;
+  --nf-danger-border: #4a2328;
+  --nf-danger-text: #ffb4be;
+  --nf-success-bg: #1f6f3e;
+  --nf-success-text: #d8ffe8;
+  --nf-warning-bg: #8a5d13;
+  --nf-warning-text: #fff0c9;
+  --nf-error-bg: #6f1f2b;
+  --nf-error-text: #ffd8de;
+  --nf-code-bg: #0c0d10;
+  --nf-code-text: #cbd5e1;
+  --nf-link: #8bd5ff;
+}
+
+:root[data-theme="light"] {
+  --background: #f4f6fa;
+  --foreground: #111827;
+
+  --nf-bg: #f4f6fa;
+  --nf-sidebar: #f8fafc;
+  --nf-panel: #ffffff;
+  --nf-surface: #ffffff;
+  --nf-border: #d9dee8;
+  --nf-text: #111827;
+  --nf-text-secondary: #6b7280;
+  --nf-hover: #eef2f7;
+  --nf-focus: #3b82f652;
+  --nf-input-bg: #ffffff;
+  --nf-input-border: #d9dee8;
+  --nf-input-focus: #9aa6ba;
+  --nf-soft-panel: #f8fafc;
+  --nf-soft-border: #d9dee8;
+  --nf-danger-bg: #fff1f2;
+  --nf-danger-border: #fecdd3;
+  --nf-danger-text: #be123c;
+  --nf-success-bg: #dcfce7;
+  --nf-success-text: #166534;
+  --nf-warning-bg: #fef3c7;
+  --nf-warning-text: #92400e;
+  --nf-error-bg: #fee2e2;
+  --nf-error-text: #991b1b;
+  --nf-code-bg: #f1f5f9;
+  --nf-code-text: #334155;
+  --nf-link: #0369a1;
 }
 
 @theme inline {
@@ -107,16 +156,16 @@ body {
 }
 
 .nextflow-controls button {
-  background: #131313 !important;
-  color: #9ea3ad !important;
-  border-bottom: 1px solid #252525 !important;
+  background: var(--nf-surface) !important;
+  color: var(--nf-text-secondary) !important;
+  border-bottom: 1px solid var(--nf-border) !important;
   width: 26px !important;
   height: 26px !important;
 }
 
 .nextflow-controls button:hover {
-  background: #1c1d21 !important;
-  color: #e2e4eb !important;
+  background: var(--nf-hover) !important;
+  color: var(--nf-text) !important;
 }
 
 .nextflow-controls button:last-child {
@@ -125,6 +174,10 @@ body {
 
 .nextflow-minimap .react-flow__minimap-mask {
   fill: #000000c0;
+}
+
+:root[data-theme="light"] .nextflow-minimap .react-flow__minimap-mask {
+  fill: #d5dce9cc;
 }
 
 @keyframes toastSlideIn {

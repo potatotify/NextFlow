@@ -7,9 +7,9 @@ interface NodeExecutionDetailProps {
 }
 
 const statusClassByValue = {
-  SUCCESS: "bg-[#1f6f3e] text-[#d8ffe8]",
-  FAILED: "bg-[#6f1f2b] text-[#ffd8de]",
-  PARTIAL: "bg-[#8a5d13] text-[#fff0c9]",
+  SUCCESS: "bg-(--nf-success-bg) text-(--nf-success-text)",
+  FAILED: "bg-(--nf-error-bg) text-(--nf-error-text)",
+  PARTIAL: "bg-(--nf-warning-bg) text-(--nf-warning-text)",
 };
 
 const isReadableUrl = (value: string): boolean => {
@@ -26,44 +26,44 @@ export const NodeExecutionDetail: FC<NodeExecutionDetailProps> = ({ nodeRun }) =
   const outputValue = nodeRun.outputs && typeof nodeRun.outputs.output === "string" ? nodeRun.outputs.output : null;
 
   return (
-    <div className="rounded-xl border border-[#222] bg-[#111214] px-3 py-2">
+    <div className="rounded-xl border border-(--nf-border) bg-(--nf-panel) px-3 py-2">
       <div className="flex items-center justify-between gap-3">
         <div className="min-w-0">
-          <p className="truncate text-[12px] font-medium text-[#e5e7eb]">{nodeRun.nodeLabel ?? nodeRun.nodeType}</p>
-          <p className="text-[11px] text-[#8f919a]">{nodeRun.nodeType}</p>
+          <p className="truncate text-[12px] font-medium text-(--nf-text)">{nodeRun.nodeLabel ?? nodeRun.nodeType}</p>
+          <p className="text-[11px] text-(--nf-text-secondary)">{nodeRun.nodeType}</p>
         </div>
         <span className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${statusClassByValue[nodeRun.status]}`}>
           {nodeRun.status}
         </span>
       </div>
 
-      {nodeRun.error ? <p className="mt-2 text-[11px] text-[#fca5a5]">{nodeRun.error}</p> : null}
+      {nodeRun.error ? <p className="mt-2 text-[11px] text-(--nf-danger-text)">{nodeRun.error}</p> : null}
 
       {outputValue ? (
-        <div className="mt-2 rounded-lg bg-[#0c0d10] px-2 py-2 text-[11px] text-[#cbd5e1]">
+        <div className="mt-2 rounded-lg bg-(--nf-code-bg) px-2 py-2 text-[11px] text-(--nf-code-text)">
           {isReadableUrl(outputValue) ? (
             <a
               href={outputValue}
               target="_blank"
               rel="noreferrer"
-              className="block truncate text-[#8bd5ff] underline decoration-[#3b82f6]/40 underline-offset-2 hover:text-[#b7e3ff]"
+              className="block truncate text-(--nf-link) underline decoration-sky-500/40 underline-offset-2 hover:brightness-110"
               title={outputValue}
             >
               {formatReadableUrl(outputValue)}
             </a>
           ) : outputValue.startsWith("data:") ? (
             <div className="space-y-1">
-              <p className="font-medium text-[#e5e7eb]">Embedded media output</p>
-              <p className="text-[#8f919a]">Stored as local data for execution. Use the node preview or download button.</p>
+              <p className="font-medium text-(--nf-text)">Embedded media output</p>
+              <p className="text-(--nf-text-secondary)">Stored as local data for execution. Use the node preview or download button.</p>
             </div>
           ) : (
-            <pre className="max-h-32 overflow-auto whitespace-pre-wrap break-words">
+            <pre className="max-h-32 overflow-auto whitespace-pre-wrap wrap-break-word">
               {JSON.stringify(nodeRun.outputs, null, 2)}
             </pre>
           )}
         </div>
       ) : nodeRun.outputs ? (
-        <pre className="mt-2 max-h-32 overflow-auto rounded-lg bg-[#0c0d10] p-2 text-[11px] text-[#cbd5e1]">
+        <pre className="mt-2 max-h-32 overflow-auto rounded-lg bg-(--nf-code-bg) p-2 text-[11px] text-(--nf-code-text)">
           {JSON.stringify(nodeRun.outputs, null, 2)}
         </pre>
       ) : null}

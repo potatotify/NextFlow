@@ -34,7 +34,7 @@ export const HistoryPanel = () => {
         <button
           type="button"
           onClick={() => void fetchRuns(workflowId)}
-          className="grid h-8 w-8 place-items-center rounded-lg border border-[#252525] bg-[#151515] text-(--nf-text-secondary) hover:text-(--nf-text)"
+          className="grid h-8 w-8 place-items-center rounded-lg border border-(--nf-border) bg-(--nf-surface) text-(--nf-text-secondary) hover:text-(--nf-text)"
           aria-label="Refresh history"
         >
           <RefreshCw className={`h-4 w-4 ${isLoading ? "animate-spin" : ""}`} />
@@ -43,7 +43,7 @@ export const HistoryPanel = () => {
 
       <div className="mt-4 min-h-0 flex-1 overflow-y-auto pr-1">
         {error ? (
-          <div className="rounded-xl border border-[#3f2226] bg-[#1a1114] px-3 py-2 text-[12px] text-[#f88f9f]">
+          <div className="rounded-xl border border-(--nf-danger-border) bg-(--nf-danger-bg) px-3 py-2 text-[12px] text-(--nf-danger-text)">
             {error}
           </div>
         ) : null}

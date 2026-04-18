@@ -2,7 +2,7 @@
 
 import { useClerk, useUser } from "@clerk/nextjs";
 import { Cpu, Crop, FileText, Film, GripVertical, ImageIcon, PanelLeft, Search, Sparkles, Video } from "lucide-react";
-import { useEffect, useRef, useState, type FC } from "react";
+import { useEffect, useMemo, useRef, useState, type FC } from "react";
 
 interface LeftSidebarProps {
   collapsed: boolean;
@@ -39,6 +39,16 @@ export const LeftSidebar: FC<LeftSidebarProps> = ({ collapsed, width, onWidthCha
   const resizeStartWidthRef = useRef(width);
   const [isResizing, setIsResizing] = useState(false);
   const [showSignOutConfirm, setShowSignOutConfirm] = useState(false);
+  const [nodeSearchText, setNodeSearchText] = useState("");
+
+  const visibleNodeButtons = useMemo(() => {
+    const query = nodeSearchText.trim().toLowerCase();
+    if (!query) return nodeButtons;
+
+    return nodeButtons.filter(({ id, label }) => {
+      return label.toLowerCase().includes(query) || id.toLowerCase().includes(query);
+    });
+  }, [nodeSearchText]);
 
   useEffect(() => {
     if (!isResizing) return;
@@ -76,7 +86,7 @@ export const LeftSidebar: FC<LeftSidebarProps> = ({ collapsed, width, onWidthCha
   return (
     <aside
       style={{ width: collapsed ? 58 : width }}
-      className={`relative flex h-full shrink-0 flex-col border-r border-[#161616] bg-(--nf-sidebar) ${isResizing ? "select-none" : ""} ${collapsed ? "transition-[width] duration-300" : "transition-[width] duration-150"}`}
+      className={`relative flex h-full shrink-0 flex-col border-r border-(--nf-border) bg-(--nf-sidebar) ${isResizing ? "select-none" : ""} ${collapsed ? "transition-[width] duration-300" : "transition-[width] duration-150"}`}
     >
       <button
         type="button"
@@ -93,9 +103,9 @@ export const LeftSidebar: FC<LeftSidebarProps> = ({ collapsed, width, onWidthCha
           onPointerDown={handleResizePointerDown}
           className="absolute right-0 top-0 z-20 h-full w-2 cursor-col-resize touch-none"
         >
-          <div className="absolute inset-y-0 right-0 w-px bg-[#202020]" />
+          <div className="absolute inset-y-0 right-0 w-px bg-(--nf-border)" />
           <div className="absolute inset-y-0 right-0 flex w-2 items-center justify-center opacity-0 transition-opacity hover:opacity-100">
-            <GripVertical className="h-4 w-4 text-[#5b5b5b]" />
+            <GripVertical className="h-4 w-4 text-(--nf-text-secondary)" />
           </div>
         </div>
       ) : null}
@@ -110,8 +120,10 @@ export const LeftSidebar: FC<LeftSidebarProps> = ({ collapsed, width, onWidthCha
             <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-(--nf-text-secondary)" />
             <input
               type="text"
+              value={nodeSearchText}
+              onChange={(event) => setNodeSearchText(event.target.value)}
               placeholder="Search nodes"
-              className="h-10 w-full rounded-xl border border-[#222222] bg-[#121214] pl-9 pr-3 text-sm text-(--nf-text) outline-none placeholder:text-(--nf-text-secondary) focus:border-[#2f2f2f]"
+              className="h-10 w-full rounded-xl border border-(--nf-input-border) bg-(--nf-input-bg) pl-9 pr-3 text-sm text-(--nf-text) outline-none placeholder:text-(--nf-text-secondary) focus:border-(--nf-input-focus)"
             />
           </label>
         ) : null}
@@ -121,35 +133,39 @@ export const LeftSidebar: FC<LeftSidebarProps> = ({ collapsed, width, onWidthCha
             <button
               type="button"
               onClick={onLoadSampleWorkflow}
-              className="mb-2 flex h-11 items-center gap-3 rounded-xl border border-[#2e2e2e] bg-[#151515] px-3 text-left text-[15px] text-(--nf-text) transition hover:bg-(--nf-hover) hover:text-white"
+              className="mb-2 flex h-11 items-center gap-3 rounded-xl border border-(--nf-border) bg-(--nf-surface) px-3 text-left text-[15px] text-(--nf-text) transition hover:bg-(--nf-hover)"
             >
-              <Sparkles className="h-4 w-4 shrink-0 text-[#c8b6ff]" />
+              <Sparkles className="h-4 w-4 shrink-0 text-(--nf-text-secondary)" />
               <span className="truncate text-[15px] leading-[1.1]">Load Sample Workflow</span>
             </button>
           ) : null}
 
-          {nodeButtons.map(({ id, label, icon: Icon }) => (
+          {visibleNodeButtons.map(({ id, label, icon: Icon }) => (
             <button
               key={id}
               type="button"
-              className={`group flex h-11 items-center rounded-xl border border-transparent text-left text-[15px] leading-[1.1] transition ${collapsed ? "justify-center px-2" : "gap-3 px-3"} bg-transparent text-(--nf-text) hover:bg-(--nf-hover) hover:text-white active:bg-[#2b2b2b]`}
+              className={`group flex h-11 items-center rounded-xl border border-transparent bg-transparent text-left text-[15px] leading-[1.1] text-(--nf-text) transition ${collapsed ? "justify-center px-2" : "gap-3 px-3"} hover:bg-(--nf-hover) active:bg-(--nf-hover)`}
               draggable
               onDragStart={(event) => {
                 event.dataTransfer.setData("application/nextflow-node-type", id);
                 event.dataTransfer.effectAllowed = "move";
               }}
             >
-              <Icon className={`shrink-0 text-(--nf-text-secondary) transition group-hover:text-white ${collapsed ? "h-6 w-6" : "h-5 w-5"}`} />
+              <Icon className={`shrink-0 text-(--nf-text-secondary) transition group-hover:text-(--nf-text) ${collapsed ? "h-6 w-6" : "h-5 w-5"}`} />
               {!collapsed ? <span className="truncate text-[15px] leading-[1.1]">{label}</span> : null}
             </button>
           ))}
+
+          {!collapsed && visibleNodeButtons.length === 0 ? (
+            <p className="px-3 py-2 text-[13px] text-(--nf-text-secondary)">No matching nodes.</p>
+          ) : null}
         </div>
 
-        <div className="mt-auto border-t border-[#171717] pt-4">
+        <div className="mt-auto border-t border-(--nf-border) pt-4">
           <div className="relative">
             {showSignOutConfirm ? (
               <div
-                className={`absolute bottom-14 z-30 rounded-2xl border border-[#262626] bg-[#111111] p-3 shadow-2xl ${collapsed ? "left-0 w-56" : "left-2 w-56"}`}
+                className={`absolute bottom-14 z-30 rounded-2xl border border-(--nf-border) bg-(--nf-panel) p-3 shadow-2xl ${collapsed ? "left-0 w-56" : "left-2 w-56"}`}
               >
                 <p className="text-[13px] font-medium text-(--nf-text)">Sign out?</p>
                 <p className="mt-1 text-[12px] text-(--nf-text-secondary)">You can log back in any time.</p>
@@ -157,14 +173,14 @@ export const LeftSidebar: FC<LeftSidebarProps> = ({ collapsed, width, onWidthCha
                   <button
                     type="button"
                     onClick={() => setShowSignOutConfirm(false)}
-                    className="h-8 rounded-lg border border-[#2a2a2a] bg-[#151515] px-3 text-[12px] text-(--nf-text-secondary) hover:text-(--nf-text)"
+                    className="h-8 rounded-lg border border-(--nf-border) bg-(--nf-surface) px-3 text-[12px] text-(--nf-text-secondary) hover:text-(--nf-text)"
                   >
                     Cancel
                   </button>
                   <button
                     type="button"
                     onClick={() => void clerk.signOut({ redirectUrl: "/sign-in" })}
-                    className="h-8 rounded-lg border border-[#4a2328] bg-[#2a1418] px-3 text-[12px] text-[#ffb4be] hover:text-white"
+                    className="h-8 rounded-lg border border-(--nf-danger-border) bg-(--nf-danger-bg) px-3 text-[12px] text-(--nf-danger-text) hover:brightness-95"
                   >
                     Sign out
                   </button>

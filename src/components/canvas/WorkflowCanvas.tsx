@@ -15,7 +15,7 @@ import {
   type OnSelectionChangeParams,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
-import { ChevronRight, Command, Hand, MousePointer2, Play, Plus, Redo2, Scissors, Shapes, Sparkles, Undo2, X } from "lucide-react";
+import { ChevronRight, Command, Hand, Moon, MousePointer2, Play, Plus, Redo2, Scissors, Shapes, Sparkles, Sun, Undo2, X } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState, type FC } from "react";
 
 import { CustomEdge } from "@/components/canvas/CustomEdge";
@@ -135,6 +135,9 @@ interface SelectionRect {
 }
 
 type ToolbarMode = "pointer" | "draw-select" | "pan" | "cut";
+type AppTheme = "dark" | "light";
+
+const THEME_STORAGE_KEY = "nextflow-theme";
 
 const TOOLBAR_NODE_TYPES: NextFlowNodeType[] = [
   "textNode",
@@ -247,6 +250,7 @@ const WorkflowCanvasInternal: FC = () => {
   const [isPresetsOpen, setIsPresetsOpen] = useState(false);
   const [isShortcutsOpen, setIsShortcutsOpen] = useState(false);
   const [isNodeHovering, setIsNodeHovering] = useState(false);
+  const [theme, setTheme] = useState<AppTheme>("dark");
   const [isConnectingNodes, setIsConnectingNodes] = useState(false);
   const [isDraggingNode, setIsDraggingNode] = useState(false);
   const [nodeSearchText, setNodeSearchText] = useState("");
@@ -421,6 +425,25 @@ const WorkflowCanvasInternal: FC = () => {
       target.isContentEditable,
     );
   };
+
+  useEffect(() => {
+    const storedTheme = window.localStorage.getItem(THEME_STORAGE_KEY);
+    const initialTheme: AppTheme = storedTheme === "light" || storedTheme === "dark"
+      ? storedTheme
+      : "dark";
+
+    setTheme(initialTheme);
+    document.documentElement.setAttribute("data-theme", initialTheme);
+  }, []);
+
+  const toggleTheme = useCallback(() => {
+    setTheme((previousTheme) => {
+      const nextTheme: AppTheme = previousTheme === "dark" ? "light" : "dark";
+      document.documentElement.setAttribute("data-theme", nextTheme);
+      window.localStorage.setItem(THEME_STORAGE_KEY, nextTheme);
+      return nextTheme;
+    });
+  }, []);
 
   useEffect(() => {
     if (!isNodeInteractionActive) return;
@@ -961,22 +984,17 @@ const WorkflowCanvasInternal: FC = () => {
       <div className="pointer-events-none absolute right-4 top-4 z-30 flex items-center gap-2">
         <button
           type="button"
-          aria-label="Theme"
-          className="pointer-events-auto flex h-10 w-10 items-center justify-center rounded-xl border border-[#2a2a2a] bg-[#202020] text-[#f2f4f8] shadow-[0_1px_0_rgba(255,255,255,0.05)_inset] transition hover:bg-[#262626]"
+          aria-label={theme === "dark" ? "Switch to light theme" : "Switch to dark theme"}
+          onClick={toggleTheme}
+          className="pointer-events-auto flex h-10 w-10 items-center justify-center rounded-xl border border-(--nf-border) bg-(--nf-surface) text-(--nf-text) shadow-[0_1px_0_rgba(255,255,255,0.05)_inset] transition hover:bg-(--nf-hover)"
         >
-          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" className="origin-bottom transition-all duration-400 ease-[cubic-bezier(.1,.65,.43,1.2)]">
-            <title>moon_fill</title>
-            <g id="moon_fill" fill="none" fillRule="evenodd">
-              <path d="M24 0v24H0V0zM12.593 23.258l-.011.002-.071.035-.02.004-.014-.004-.071-.035c-.01-.004-.019-.001-.024.005l-.004.01-.017.428.005.02.01.013.104.074.015.004.012-.004.104-.074.012-.016.004-.017-.017-.427c-.002-.01-.009-.017-.017-.018m.265-.113-.013.002-.185.093-.01.01-.003.011.018.43.005.012.008.007.201.093c.012.004.023 0 .029-.008l.004-.014-.034-.614c-.003-.012-.01-.02-.02-.022m-.715.002a.023.023 0 0 0-.027.006l-.006.014-.034.614c0 .012.007.02.017.024l.015-.002.201-.093.01-.008.004-.011.017-.43-.003-.012-.01-.01z" />
-              <path fill="currentColor" d="M13.574 3.138a1.01 1.01 0 0 0-1.097 1.408 6 6 0 0 1-7.931 7.931 1.01 1.01 0 0 0-1.409 1.097A9 9 0 0 0 21 12a9.001 9.001 0 0 0-7.426-8.862" />
-            </g>
-          </svg>
+          {theme === "light" ? <Sun className="h-4.5 w-4.5" /> : <Moon className="h-4.5 w-4.5" />}
         </button>
 
         <button
           type="button"
           aria-label="Share"
-          className="pointer-events-auto flex h-10 items-center gap-2 rounded-xl border border-[#2a2a2a] bg-[#202020] px-3 text-[13px] font-medium text-[#d9dde3] shadow-[0_1px_0_rgba(255,255,255,0.05)_inset] transition hover:bg-[#262626]"
+          className="pointer-events-auto flex h-10 items-center gap-2 rounded-xl border border-(--nf-border) bg-(--nf-surface) px-3 text-[13px] font-medium text-(--nf-text) shadow-[0_1px_0_rgba(255,255,255,0.05)_inset] transition hover:bg-(--nf-hover)"
         >
           <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24">
             <g fill="none" fillRule="evenodd">
@@ -990,7 +1008,7 @@ const WorkflowCanvasInternal: FC = () => {
         <button
           type="button"
           aria-label="Turn workflow into app"
-          className="pointer-events-auto flex h-10 items-center gap-2 rounded-xl border border-[#2a2a2a] bg-[#202020] px-3 text-[13px] font-medium text-[#d9dde3] shadow-[0_1px_0_rgba(255,255,255,0.05)_inset] transition hover:bg-[#262626]"
+          className="pointer-events-auto flex h-10 items-center gap-2 rounded-xl border border-(--nf-border) bg-(--nf-surface) px-3 text-[13px] font-medium text-(--nf-text) shadow-[0_1px_0_rgba(255,255,255,0.05)_inset] transition hover:bg-(--nf-hover)"
         >
           <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0 text-[#b8bcc5]">
             <path d="m15 12-8.373 8.373a1 1 0 1 1-3-3L12 9" />
@@ -1003,7 +1021,7 @@ const WorkflowCanvasInternal: FC = () => {
         <button
           type="button"
           aria-label="Images"
-          className="pointer-events-auto flex h-10 w-10 items-center justify-center rounded-xl border border-[#2a2a2a] bg-[#202020] text-[#e2e6ec] shadow-[0_1px_0_rgba(255,255,255,0.05)_inset] transition hover:bg-[#262626]"
+          className="pointer-events-auto flex h-10 w-10 items-center justify-center rounded-xl border border-(--nf-border) bg-(--nf-surface) text-(--nf-text) shadow-[0_1px_0_rgba(255,255,255,0.05)_inset] transition hover:bg-(--nf-hover)"
         >
           <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0">
             <path d="M18 22H4a2 2 0 0 1-2-2V6" />
@@ -1155,7 +1173,7 @@ const WorkflowCanvasInternal: FC = () => {
             undo();
           }}
           disabled={past.length === 0}
-          className="pointer-events-auto grid h-9 w-9 place-items-center rounded-xl border border-[#2a2a2a] bg-[#202020] text-[#dbdee4] shadow-[0_1px_0_rgba(255,255,255,0.05)_inset] transition hover:bg-[#2a2a2a] disabled:cursor-not-allowed disabled:opacity-45"
+          className="pointer-events-auto grid h-9 w-9 place-items-center rounded-xl border border-(--nf-border) bg-(--nf-surface) text-(--nf-text) shadow-[0_1px_0_rgba(255,255,255,0.05)_inset] transition hover:bg-(--nf-hover) disabled:cursor-not-allowed disabled:opacity-45"
           aria-label="Undo"
         >
           <Undo2 className="h-4.5 w-4.5" />
@@ -1168,7 +1186,7 @@ const WorkflowCanvasInternal: FC = () => {
             redo();
           }}
           disabled={future.length === 0}
-          className="pointer-events-auto grid h-9 w-9 place-items-center rounded-xl border border-[#2a2a2a] bg-[#202020] text-[#dbdee4] shadow-[0_1px_0_rgba(255,255,255,0.05)_inset] transition hover:bg-[#2a2a2a] disabled:cursor-not-allowed disabled:opacity-45"
+          className="pointer-events-auto grid h-9 w-9 place-items-center rounded-xl border border-(--nf-border) bg-(--nf-surface) text-(--nf-text) shadow-[0_1px_0_rgba(255,255,255,0.05)_inset] transition hover:bg-(--nf-hover) disabled:cursor-not-allowed disabled:opacity-45"
           aria-label="Redo"
         >
           <Redo2 className="h-4.5 w-4.5" />
@@ -1180,10 +1198,10 @@ const WorkflowCanvasInternal: FC = () => {
             if (isNodeInteractionActive) return;
             setIsShortcutsOpen(true);
           }}
-          className="pointer-events-auto flex h-9 items-center gap-2 rounded-xl border border-[#2a2a2a] bg-[#202020] px-3 text-sm font-medium text-[#eceff4] shadow-[0_1px_0_rgba(255,255,255,0.05)_inset] transition hover:bg-[#2a2a2a]"
+          className="pointer-events-auto flex h-9 items-center gap-2 rounded-xl border border-(--nf-border) bg-(--nf-surface) px-3 text-sm font-medium text-(--nf-text) shadow-[0_1px_0_rgba(255,255,255,0.05)_inset] transition hover:bg-(--nf-hover)"
           aria-label="Open keyboard shortcuts"
         >
-          <Command className="h-4 w-4 text-[#d0d4db]" />
+          <Command className="h-4 w-4 text-(--nf-text-secondary)" />
           Keyboard shortcuts
         </button>
       </div>
@@ -1194,30 +1212,30 @@ const WorkflowCanvasInternal: FC = () => {
           onClick={() => setIsShortcutsOpen(false)}
         >
           <div
-            className="w-[min(92vw,440px)] rounded-3xl border border-[#1f1f1f] bg-[#090909] p-8 shadow-[0_24px_80px_rgba(0,0,0,0.6)]"
+            className="w-[min(92vw,440px)] rounded-3xl border border-(--nf-border) bg-(--nf-panel) p-8 shadow-[0_24px_80px_rgba(0,0,0,0.6)]"
             onClick={(event) => event.stopPropagation()}
           >
             <div className="mb-6 flex items-start justify-between gap-4">
               <div>
-                <h3 className="text-[34px] font-semibold text-[#f0f0f0]">Keyboard Shortcuts</h3>
-                <p className="mt-1 text-sm text-[#8b8b8f]">Quickly navigate and create with these shortcuts.</p>
+                <h3 className="text-[34px] font-semibold text-(--nf-text)">Keyboard Shortcuts</h3>
+                <p className="mt-1 text-sm text-(--nf-text-secondary)">Quickly navigate and create with these shortcuts.</p>
               </div>
               <button
                 type="button"
                 onClick={() => setIsShortcutsOpen(false)}
-                className="grid h-10 w-10 place-items-center rounded-full border border-[#5f5f5f] text-[#d4d4d6] transition hover:bg-[#161616]"
+                className="grid h-10 w-10 place-items-center rounded-full border border-(--nf-border) text-(--nf-text-secondary) transition hover:bg-(--nf-hover)"
                 aria-label="Close keyboard shortcuts"
               >
                 <X className="h-5 w-5" />
               </button>
             </div>
 
-            <div className="space-y-3 text-sm text-[#d0d0d3]">
-              <div className="flex items-center justify-between"><span>Undo</span><span className="rounded-md bg-[#232427] px-2 py-0.5 text-xs">Ctrl Z</span></div>
-              <div className="flex items-center justify-between"><span>Redo</span><span className="rounded-md bg-[#232427] px-2 py-0.5 text-xs">Ctrl Shift Z</span></div>
-              <div className="flex items-center justify-between"><span>Delete selected</span><span className="rounded-md bg-[#232427] px-2 py-0.5 text-xs">Del</span></div>
-              <div className="flex items-center justify-between"><span>Pan canvas</span><span className="rounded-md bg-[#232427] px-2 py-0.5 text-xs">Hand Tool</span></div>
-              <div className="flex items-center justify-between"><span>Add node</span><span className="rounded-md bg-[#232427] px-2 py-0.5 text-xs">N</span></div>
+            <div className="space-y-3 text-sm text-(--nf-text)">
+              <div className="flex items-center justify-between"><span>Undo</span><span className="rounded-md bg-(--nf-surface) px-2 py-0.5 text-xs text-(--nf-text-secondary)">Ctrl Z</span></div>
+              <div className="flex items-center justify-between"><span>Redo</span><span className="rounded-md bg-(--nf-surface) px-2 py-0.5 text-xs text-(--nf-text-secondary)">Ctrl Shift Z</span></div>
+              <div className="flex items-center justify-between"><span>Delete selected</span><span className="rounded-md bg-(--nf-surface) px-2 py-0.5 text-xs text-(--nf-text-secondary)">Del</span></div>
+              <div className="flex items-center justify-between"><span>Pan canvas</span><span className="rounded-md bg-(--nf-surface) px-2 py-0.5 text-xs text-(--nf-text-secondary)">Hand Tool</span></div>
+              <div className="flex items-center justify-between"><span>Add node</span><span className="rounded-md bg-(--nf-surface) px-2 py-0.5 text-xs text-(--nf-text-secondary)">N</span></div>
             </div>
           </div>
         </div>
@@ -1232,15 +1250,15 @@ const WorkflowCanvasInternal: FC = () => {
         onContextMenu={stopToolbarEventPropagation}
       >
         {isNodeMenuOpen ? (
-          <div className="pointer-events-auto mb-3 w-90 rounded-2xl border border-[#202020] bg-[#090909] p-3 shadow-[0_18px_60px_rgba(0,0,0,0.6)]">
-            <div className="flex h-11 items-center gap-2 rounded-xl border border-[#1d1d1d] bg-[#0e0e0e] px-3">
-              <span className="text-[#6f747e]">🔍</span>
+          <div className="pointer-events-auto mb-3 w-90 rounded-2xl border border-(--nf-border) bg-(--nf-panel) p-3 shadow-[0_18px_60px_rgba(0,0,0,0.6)]">
+            <div className="flex h-11 items-center gap-2 rounded-xl border border-(--nf-border) bg-(--nf-surface) px-3">
+              <span className="text-(--nf-text-secondary)">🔍</span>
               <input
                 type="text"
                 value={nodeSearchText}
                 onChange={(event) => setNodeSearchText(event.target.value)}
                 placeholder="Search nodes"
-                className="h-full flex-1 bg-transparent text-[15px] text-[#d8dbe1] outline-none placeholder:text-[#666b75]"
+                className="h-full flex-1 bg-transparent text-[15px] text-(--nf-text) outline-none placeholder:text-(--nf-text-secondary)"
                 autoFocus
               />
             </div>
@@ -1250,33 +1268,33 @@ const WorkflowCanvasInternal: FC = () => {
                   key={nodeType}
                   type="button"
                   onClick={() => addNodeFromToolbar(nodeType)}
-                  className="flex h-11 w-full items-center justify-between rounded-xl px-3 text-left text-[15px] text-[#eceef2] transition hover:bg-[#202124]"
+                  className="flex h-11 w-full items-center justify-between rounded-xl px-3 text-left text-[15px] text-(--nf-text) transition hover:bg-(--nf-hover)"
                 >
                   <span>{getNodeLabel(nodeType)}</span>
-                  <ChevronRight className="h-4 w-4 text-[#9095a1]" />
+                  <ChevronRight className="h-4 w-4 text-(--nf-text-secondary)" />
                 </button>
               ))}
               {visibleNodeOptions.length === 0 ? (
-                <div className="px-3 py-4 text-[13px] text-[#777d89]">No matching nodes.</div>
+                <div className="px-3 py-4 text-[13px] text-(--nf-text-secondary)">No matching nodes.</div>
               ) : null}
             </div>
           </div>
         ) : null}
 
         {isPresetsOpen ? (
-          <div className="pointer-events-auto mb-3 w-72 rounded-2xl border border-[#202020] bg-[#090909] p-2 shadow-[0_18px_60px_rgba(0,0,0,0.6)]">
+          <div className="pointer-events-auto mb-3 w-72 rounded-2xl border border-(--nf-border) bg-(--nf-panel) p-2 shadow-[0_18px_60px_rgba(0,0,0,0.6)]">
             <button
               type="button"
               onClick={applySamplePreset}
-              className="flex h-11 w-full items-center justify-between rounded-xl px-3 text-left text-sm font-medium text-[#eceef2] transition hover:bg-[#202124]"
+              className="flex h-11 w-full items-center justify-between rounded-xl px-3 text-left text-sm font-medium text-(--nf-text) transition hover:bg-(--nf-hover)"
             >
               <span>Load Sample Workflow</span>
-              <Sparkles className="h-4 w-4 text-[#9ca2ae]" />
+              <Sparkles className="h-4 w-4 text-(--nf-text-secondary)" />
             </button>
           </div>
         ) : null}
 
-        <div className="pointer-events-auto flex items-center rounded-2xl border border-[#2a2a2a] bg-[#202020] p-1 shadow-[0_2px_10px_rgba(0,0,0,0.35)]">
+        <div className="pointer-events-auto flex items-center rounded-2xl border border-(--nf-border) bg-(--nf-surface) p-1 shadow-[0_2px_10px_rgba(0,0,0,0.35)]">
           <button
             type="button"
             onClick={() => {
@@ -1284,7 +1302,7 @@ const WorkflowCanvasInternal: FC = () => {
               setIsNodeMenuOpen((value) => !value);
               setIsPresetsOpen(false);
             }}
-            className={`grid h-12 w-12 place-items-center rounded-xl text-[#eceff5] transition hover:bg-[#2b2b2b] ${isNodeMenuOpen ? "bg-[#3a3a3a]" : "bg-transparent"}`}
+            className={`grid h-12 w-12 place-items-center rounded-xl text-(--nf-text) transition hover:bg-(--nf-hover) ${isNodeMenuOpen ? "bg-(--nf-hover)" : "bg-transparent"}`}
             aria-label="Open node picker"
           >
             <Plus className="h-6 w-6" />
@@ -1299,7 +1317,7 @@ const WorkflowCanvasInternal: FC = () => {
               setCutPathPoints([]);
               setCutCursorPoint(null);
             }}
-            className={`grid h-12 w-12 place-items-center rounded-xl text-[#eceff5] transition hover:bg-[#2b2b2b] ${toolbarMode === "draw-select" ? "bg-[#4a4a4a]" : "bg-transparent"}`}
+            className={`grid h-12 w-12 place-items-center rounded-xl text-(--nf-text) transition hover:bg-(--nf-hover) ${toolbarMode === "draw-select" ? "bg-(--nf-hover)" : "bg-transparent"}`}
             aria-label="Draw selection"
           >
             <MousePointer2 className="h-5.5 w-5.5" />
@@ -1315,7 +1333,7 @@ const WorkflowCanvasInternal: FC = () => {
               setCutPathPoints([]);
               setCutCursorPoint(null);
             }}
-            className={`grid h-12 w-12 place-items-center rounded-xl text-[#eceff5] transition hover:bg-[#2b2b2b] ${toolbarMode === "pan" ? "bg-[#4a4a4a]" : "bg-transparent"}`}
+            className={`grid h-12 w-12 place-items-center rounded-xl text-(--nf-text) transition hover:bg-(--nf-hover) ${toolbarMode === "pan" ? "bg-(--nf-hover)" : "bg-transparent"}`}
             aria-label="Pan canvas"
           >
             <Hand className="h-5.5 w-5.5" />
@@ -1330,7 +1348,7 @@ const WorkflowCanvasInternal: FC = () => {
               setActiveSelectionRect(null);
               setCutCursorPoint(null);
             }}
-            className={`grid h-12 w-12 place-items-center rounded-xl text-[#eceff5] transition hover:bg-[#2b2b2b] ${toolbarMode === "cut" ? "bg-[#4a4a4a]" : "bg-transparent"}`}
+            className={`grid h-12 w-12 place-items-center rounded-xl text-(--nf-text) transition hover:bg-(--nf-hover) ${toolbarMode === "cut" ? "bg-(--nf-hover)" : "bg-transparent"}`}
             aria-label="Cut connections"
           >
             <Scissors className="h-5.5 w-5.5" />
@@ -1346,7 +1364,7 @@ const WorkflowCanvasInternal: FC = () => {
               setCutPathPoints([]);
               setCutCursorPoint(null);
             }}
-            className="grid h-12 w-12 place-items-center rounded-xl text-[#eceff5] transition hover:bg-[#2b2b2b]"
+            className="grid h-12 w-12 place-items-center rounded-xl text-(--nf-text) transition hover:bg-(--nf-hover)"
             aria-label="K button"
           >
             <svg aria-label="Krea Logo" width="20" height="20" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
@@ -1362,7 +1380,7 @@ const WorkflowCanvasInternal: FC = () => {
               setIsPresetsOpen((value) => !value);
               setIsNodeMenuOpen(false);
             }}
-            className={`grid h-12 w-12 place-items-center rounded-xl text-[#eceff5] transition hover:bg-[#2b2b2b] ${isPresetsOpen ? "bg-[#3a3a3a]" : "bg-transparent"}`}
+            className={`grid h-12 w-12 place-items-center rounded-xl text-(--nf-text) transition hover:bg-(--nf-hover) ${isPresetsOpen ? "bg-(--nf-hover)" : "bg-transparent"}`}
             aria-label="Open presets"
           >
             <Shapes className="h-5.5 w-5.5" />
@@ -1394,7 +1412,10 @@ const WorkflowCanvasInternal: FC = () => {
         defaultEdgeOptions={{ type: "custom", animated: false }}
         isValidConnection={isValidConnection}
         proOptions={{ hideAttribution: true }}
-        style={{ backgroundColor: "#101010", cursor: shouldShowCutCursor ? "none" : toolbarMode === "pan" ? "grab" : "default" }}
+        style={{
+          backgroundColor: theme === "light" ? "#f4f6fa" : "#101010",
+          cursor: shouldShowCutCursor ? "none" : toolbarMode === "pan" ? "grab" : "default",
+        }}
         panOnDrag={toolbarMode === "pan"}
         panOnScroll
         panOnScrollMode={PanOnScrollMode.Free}
@@ -1413,15 +1434,19 @@ const WorkflowCanvasInternal: FC = () => {
           variant={BackgroundVariant.Dots}
           gap={34}
           size={1.65}
-          color="rgba(168, 173, 184, 0.17)"
+          color={theme === "light" ? "rgba(120, 128, 142, 0.26)" : "rgba(168, 173, 184, 0.17)"}
         />
         <MiniMap
           pannable
           zoomable
           className="nextflow-minimap"
-          nodeColor="#2d313a"
-          maskColor="rgba(0, 0, 0, 0.8)"
-          style={{ backgroundColor: "#0f1014", border: "1px solid #262626", borderRadius: 12 }}
+          nodeColor={theme === "light" ? "#98a2b3" : "#2d313a"}
+          maskColor={theme === "light" ? "rgba(213, 220, 233, 0.8)" : "rgba(0, 0, 0, 0.8)"}
+          style={{
+            backgroundColor: theme === "light" ? "#ffffff" : "#0f1014",
+            border: theme === "light" ? "1px solid #d9dee8" : "1px solid #262626",
+            borderRadius: 12,
+          }}
         />
       </ReactFlow>
     </div>
