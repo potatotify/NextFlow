@@ -97,7 +97,7 @@ const toResultNode = (
 
 export const WorkflowShell: FC<WorkflowShellProps> = ({ children }) => {
   const { isLoaded, userId } = useAuth();
-  const [leftCollapsed, setLeftCollapsed] = useState(false);
+  const [leftCollapsed, setLeftCollapsed] = useState(true);
   const [leftSidebarWidth, setLeftSidebarWidth] = useState(288);
   const [rightCollapsed, setRightCollapsed] = useState(true);
   const [isRunning, setIsRunning] = useState(false);
