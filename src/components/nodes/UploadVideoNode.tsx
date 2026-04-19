@@ -19,11 +19,13 @@ export const UploadVideoNode = ({ id, data, selected }: NodeProps) => {
   const [uploadError, setUploadError] = useState<string | null>(null);
 
   const uploadVideoFile = useCallback(async (file: File): Promise<string> => {
+    const formData = new FormData();
+    formData.append("file", file);
+
     const response = await fetch("/api/media/upload/video", {
       method: "POST",
-      body: file,
+      body: formData,
       headers: {
-        "content-type": file.type || "application/octet-stream",
         "x-file-name": file.name,
         "x-file-type": file.type || "video/mp4",
       },

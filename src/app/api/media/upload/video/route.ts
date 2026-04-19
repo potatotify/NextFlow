@@ -4,6 +4,33 @@ import { NextResponse } from "next/server";
 import { uploadBufferToTransloadit } from "@/lib/transloadit-upload";
 
 const MAX_VIDEO_BYTES = 120 * 1024 * 1024;
+export const maxDuration = 300;
+
+const mimeTypeByExtension: Record<string, string> = {
+  ".mp4": "video/mp4",
+  ".mov": "video/quicktime",
+  ".webm": "video/webm",
+  ".mkv": "video/x-matroska",
+  ".avi": "video/x-msvideo",
+  ".mpeg": "video/mpeg",
+  ".mpg": "video/mpeg",
+  ".ogv": "video/ogg",
+};
+
+const inferVideoMimeType = (fileName: string, fallbackMimeType: string): string => {
+  const lowerName = fileName.toLowerCase();
+  for (const [extension, mimeType] of Object.entries(mimeTypeByExtension)) {
+    if (lowerName.endsWith(extension)) {
+      return mimeType;
+    }
+  }
+
+  if (fallbackMimeType.startsWith("video/")) {
+    return fallbackMimeType;
+  }
+
+  return "video/mp4";
+};
 
 export async function POST(request: Request) {
   const { userId } = await auth();
@@ -27,9 +54,10 @@ export async function POST(request: Request) {
 
       fileBuffer = Buffer.from(await file.arrayBuffer());
       fileName = file.name || fileName;
-      mimeType = file.type || mimeType;
+      mimeType = inferVideoMimeType(fileName, file.type || mimeType);
     } else {
       fileBuffer = Buffer.from(await request.arrayBuffer());
+      mimeType = inferVideoMimeType(fileName, mimeType);
     }
 
     if (!mimeType.startsWith("video/")) {

@@ -1,6 +1,15 @@
 {
   "buildCommand": "pnpm run db:generate && next build",
   "functions": {
+    "src/app/api/execute/route.ts": {
+      "maxDuration": 300
+    },
+    "src/app/api/media/upload/video/route.ts": {
+      "maxDuration": 300
+    },
+    "src/app/api/media/upload/image/route.ts": {
+      "maxDuration": 120
+    },
     "src/app/api/**/*.ts": {
       "maxDuration": 30
     }

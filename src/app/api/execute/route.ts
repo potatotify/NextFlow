@@ -1,4 +1,5 @@
 import { auth } from "@clerk/nextjs/server";
+import { runs } from "@trigger.dev/sdk/v3";
 import { type Edge, type Node } from "@xyflow/react";
 import { NextResponse } from "next/server";
 import { z } from "zod";
@@ -6,9 +7,11 @@ import { z } from "zod";
 import { Prisma } from "@/generated/prisma/client";
 import { executeWorkflowGraph } from "@/lib/workflow-executor";
 import { prisma } from "@/lib/prisma";
-import { runCropImageNode } from "@/trigger/crop-image-task";
-import { runExtractFrameNode } from "@/trigger/extract-frame-task";
-import { runLlmNode } from "@/trigger/llm-task";
+import { cropImageTask, type CropImageTaskPayload } from "@/trigger/crop-image-task";
+import { extractFrameTask, type ExtractFrameTaskPayload } from "@/trigger/extract-frame-task";
+import { llmTask, type LlmTaskPayload } from "@/trigger/llm-task";
+
+export const maxDuration = 300;
 
 const executeWorkflowSchema = z.object({
   workflowId: z.string().optional(),
@@ -16,6 +19,78 @@ const executeWorkflowSchema = z.object({
   nodes: z.array(z.custom<Node>()),
   edges: z.array(z.custom<Edge>()),
 });
+
+const triggerPollIntervalMs = Number(process.env.NEXTFLOW_TRIGGER_POLL_INTERVAL_MS ?? 1000);
+const triggerRunTimeoutMs = Number(process.env.NEXTFLOW_TRIGGER_RUN_TIMEOUT_MS ?? 120000);
+const triggerQueuedWarningMs = Number(process.env.NEXTFLOW_TRIGGER_QUEUE_WARNING_MS ?? 20000);
+
+interface TriggerTaskLike<TPayload> {
+  trigger: (payload: TPayload) => Promise<{ id: string }>;
+}
+
+const isLikelyDevTriggerSecret = (secret: string | undefined): boolean => {
+  return typeof secret === "string" && secret.trim().startsWith("tr_dev_");
+};
+
+const sleep = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms));
+
+const runViaTriggerTask = async <TPayload, TResult extends object>(
+  taskId: string,
+  task: TriggerTaskLike<TPayload>,
+  payload: TPayload,
+): Promise<TResult & { triggerRunId?: string | null }> => {
+  const triggerSecret = process.env.TRIGGER_SECRET_KEY;
+  const triggerProjectId = process.env.TRIGGER_PROJECT_ID;
+
+  if (!triggerSecret || !triggerProjectId) {
+    throw new Error(
+      `Trigger.dev is required for ${taskId}. Configure TRIGGER_SECRET_KEY and TRIGGER_PROJECT_ID, then run trigger.dev worker/deploy.`,
+    );
+  }
+
+  if (process.env.NODE_ENV === "production" && isLikelyDevTriggerSecret(triggerSecret)) {
+    throw new Error(
+      `Trigger.dev key mismatch for ${taskId}: this deployment is running with a development Trigger secret (tr_dev_*). Use a production Trigger secret (tr_prod_*) for deployed workflows.`,
+    );
+  }
+
+  const runHandle = await task.trigger(payload);
+
+  const startedAt = Date.now();
+  while (Date.now() - startedAt < triggerRunTimeoutMs) {
+    const run = await runs.retrieve(runHandle.id);
+
+    if (run.status === "EXPIRED") {
+      throw new Error(
+        `${taskId} run ${run.id} expired before execution. This usually means no active Trigger worker is consuming this environment's queue. Confirm TRIGGER_SECRET_KEY matches the deployed Trigger environment.`,
+      );
+    }
+
+    if (run.isCompleted) {
+      if (!run.isSuccess) {
+        const errorMessage = run.error?.message ?? "Unknown Trigger.dev task failure";
+        throw new Error(`${taskId} run ${run.id} failed: ${errorMessage}`);
+      }
+
+      return {
+        ...(run.output as TResult),
+        triggerRunId: run.id,
+      };
+    }
+
+    if (run.isQueued && Date.now() - startedAt > triggerQueuedWarningMs) {
+      throw new Error(
+        `${taskId} run ${run.id} stayed queued for too long. Ensure Trigger workers are deployed to the same environment as TRIGGER_SECRET_KEY.`,
+      );
+    }
+
+    await sleep(Math.max(250, triggerPollIntervalMs));
+  }
+
+  throw new Error(
+    `${taskId} run ${runHandle.id} timed out after ${triggerRunTimeoutMs}ms while waiting for Trigger.dev completion.`,
+  );
+};
 
 const toPrismaJson = (
   value: Record<string, unknown> | null | undefined,
@@ -99,9 +174,16 @@ export async function POST(request: Request) {
       nodes,
       edges,
       runners: {
-        runLlm: runLlmNode,
-        runCrop: runCropImageNode,
-        runExtract: runExtractFrameNode,
+        runLlm: (payload) =>
+          runViaTriggerTask<LlmTaskPayload, { text: string }>("llm-task", llmTask, payload),
+        runCrop: (payload) =>
+          runViaTriggerTask<CropImageTaskPayload, { imageUrl: string }>("crop-image-task", cropImageTask, payload),
+        runExtract: (payload) =>
+          runViaTriggerTask<ExtractFrameTaskPayload, { imageUrl: string }>(
+            "extract-frame-task",
+            extractFrameTask,
+            payload,
+          ),
       },
     });
 

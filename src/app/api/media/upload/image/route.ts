@@ -4,6 +4,7 @@ import { NextResponse } from "next/server";
 import { uploadBufferToTransloadit } from "@/lib/transloadit-upload";
 
 const MAX_IMAGE_BYTES = 25 * 1024 * 1024;
+export const maxDuration = 120;
 
 export async function POST(request: Request) {
   const { userId } = await auth();

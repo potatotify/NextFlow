@@ -7,7 +7,7 @@ import { promisify } from "node:util";
 import ffmpegStaticPath from "ffmpeg-static";
 
 import { fetchMediaBuffer } from "@/lib/media-utils";
-import { extractFrameFromVideoWithTransloadit, uploadBufferToTransloadit } from "@/lib/transloadit-upload";
+import { uploadBufferToTransloadit } from "@/lib/transloadit-upload";
 
 export interface ExtractFrameTaskPayload {
   videoUrl: string;
@@ -43,7 +43,7 @@ const findFfmpegInPath = (): string | null => {
       encoding: "utf-8",
       stdio: ["pipe", "pipe", "pipe"],
     });
-    const ffmpegPath = result.trim().split("\n")[0];
+    const ffmpegPath = result.trim().split(/\r?\n/)[0];
     if (ffmpegPath && fileExists(ffmpegPath)) {
       return ffmpegPath;
     }
@@ -54,6 +54,76 @@ const findFfmpegInPath = (): string | null => {
   return null;
 };
 
+const findFfmpegFromNodeModules = (): string | null => {
+  const binaryName = isWindows() ? "ffmpeg.exe" : "ffmpeg";
+
+  const directCandidate = path.join(process.cwd(), "node_modules", "ffmpeg-static", binaryName);
+  if (fileExists(directCandidate)) {
+    return directCandidate;
+  }
+
+  const pnpmStorePath = path.join(process.cwd(), "node_modules", ".pnpm");
+  if (!fs.existsSync(pnpmStorePath)) {
+    return null;
+  }
+
+  try {
+    const entries = fs.readdirSync(pnpmStorePath, { withFileTypes: true });
+    for (const entry of entries) {
+      if (!entry.isDirectory() || !entry.name.startsWith("ffmpeg-static@")) continue;
+
+      const candidate = path.join(
+        pnpmStorePath,
+        entry.name,
+        "node_modules",
+        "ffmpeg-static",
+        binaryName,
+      );
+
+      if (fileExists(candidate)) {
+        return candidate;
+      }
+    }
+  } catch {
+    return null;
+  }
+
+  return null;
+};
+
+const getFfmpegStaticBinary = (): string => {
+  const candidate = ffmpegStaticPath as unknown;
+
+  if (typeof candidate === "string") {
+    return candidate.trim();
+  }
+
+  if (
+    candidate &&
+    typeof candidate === "object" &&
+    "default" in candidate &&
+    typeof (candidate as { default?: unknown }).default === "string"
+  ) {
+    return ((candidate as { default: string }).default ?? "").trim();
+  }
+
+  return "";
+};
+
+const getFfmpegInstallerBinary = (): string => {
+  try {
+    const runtimeRequire = (0, eval)("require") as NodeRequire;
+    const candidate = runtimeRequire("@ffmpeg-installer/ffmpeg") as { path?: unknown } | undefined;
+    if (candidate && typeof candidate.path === "string") {
+      return candidate.path.trim();
+    }
+  } catch {
+    // Optional runtime fallback not available.
+  }
+
+  return "";
+};
+
 const resolveFfmpegBinary = (): string | null => {
   const envBinary = process.env.FFMPEG_BIN?.trim() || process.env.FFMPEG_PATH?.trim();
   if (envBinary && fileExists(envBinary)) {
@@ -61,10 +131,22 @@ const resolveFfmpegBinary = (): string | null => {
     return envBinary;
   }
 
-  const staticBinary = typeof ffmpegStaticPath === "string" ? ffmpegStaticPath.trim() : "";
+  const staticBinary = getFfmpegStaticBinary();
   if (staticBinary && fileExists(staticBinary)) {
     console.log(`[ffmpeg] Using ffmpeg-static: ${staticBinary}`);
     return staticBinary;
+  }
+
+  const installerBinary = getFfmpegInstallerBinary();
+  if (installerBinary && fileExists(installerBinary)) {
+    console.log(`[ffmpeg] Using @ffmpeg-installer binary: ${installerBinary}`);
+    return installerBinary;
+  }
+
+  const nodeModulesBinary = findFfmpegFromNodeModules();
+  if (nodeModulesBinary) {
+    console.log(`[ffmpeg] Found in node_modules: ${nodeModulesBinary}`);
+    return nodeModulesBinary;
   }
 
   const pathBinary = findFfmpegInPath();
@@ -95,16 +177,9 @@ export const runExtractFrameNode = async (payload: ExtractFrameTaskPayload): Pro
   const ffmpegBinary = resolveFfmpegBinary();
 
   if (!ffmpegBinary) {
-    const fallbackUrl = await extractFrameFromVideoWithTransloadit(
-      buffer,
-      "extract-frame-fallback-input.mp4",
-      timestamp,
+    throw new Error(
+      "FFmpeg binary not found for extract-frame task. Configure FFMPEG_BIN/FFMPEG_PATH or install ffmpeg.",
     );
-
-    return {
-      imageUrl: fallbackUrl,
-      triggerRunId: null,
-    };
   }
 
   console.log(`[extract-frame] Using ffmpeg binary: ${ffmpegBinary}`);
@@ -144,19 +219,6 @@ export const runExtractFrameNode = async (payload: ExtractFrameTaskPayload): Pro
   } catch (error) {
     const err = error instanceof Error ? error.message : String(error);
     console.error(`[extract-frame] Error: ${err}`);
-
-    if (err.includes("ENOENT") || err.includes("not found")) {
-      const fallbackUrl = await extractFrameFromVideoWithTransloadit(
-        buffer,
-        "extract-frame-fallback-input.mp4",
-        timestamp,
-      );
-
-      return {
-        imageUrl: fallbackUrl,
-        triggerRunId: null,
-      };
-    }
 
     throw error;
   } finally {
