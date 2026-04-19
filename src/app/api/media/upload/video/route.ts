@@ -1,7 +1,7 @@
 import { auth } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
 
-import { uploadBufferToTransloadit } from "@/lib/transloadit-upload";
+import { createVideoUploadSession, uploadBufferToTransloadit, waitForVideoAssemblyUrl } from "@/lib/transloadit-upload";
 
 const MAX_VIDEO_BYTES = 120 * 1024 * 1024;
 export const maxDuration = 300;
@@ -40,6 +40,41 @@ export async function POST(request: Request) {
 
   try {
     const contentType = request.headers.get("content-type") ?? "";
+
+    if (contentType.includes("application/json")) {
+      const body = (await request.json().catch(() => null)) as
+        | { action?: string; fileName?: string; mimeType?: string; assemblyId?: string }
+        | null;
+
+      if (!body?.action) {
+        return NextResponse.json({ error: "Missing upload action." }, { status: 400 });
+      }
+
+      if (body.action === "init") {
+        const fileName = body.fileName?.trim() || "video-upload.mp4";
+        const mimeType = body.mimeType?.trim() || "video/mp4";
+        const session = await createVideoUploadSession(fileName, mimeType);
+
+        return NextResponse.json({
+          uploadUrl: session.uploadUrl,
+          assemblyId: session.assemblyId,
+          assemblyUrl: session.assemblyUrl,
+          fieldName: session.fieldName,
+        });
+      }
+
+      if (body.action === "complete") {
+        if (!body.assemblyId) {
+          return NextResponse.json({ error: "assemblyId is required." }, { status: 400 });
+        }
+
+        const uploadedUrl = await waitForVideoAssemblyUrl(body.assemblyId);
+        return NextResponse.json({ url: uploadedUrl });
+      }
+
+      return NextResponse.json({ error: "Unsupported upload action." }, { status: 400 });
+    }
+
     let fileBuffer: Buffer;
     let fileName = request.headers.get("x-file-name")?.trim() || "video-upload.mp4";
     let mimeType = request.headers.get("x-file-type")?.trim() || contentType || "video/mp4";

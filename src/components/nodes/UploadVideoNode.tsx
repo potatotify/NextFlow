@@ -18,26 +18,74 @@ export const UploadVideoNode = ({ id, data, selected }: NodeProps) => {
   const [isUploading, setIsUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
 
-  const uploadVideoFile = useCallback(async (file: File): Promise<string> => {
-    const formData = new FormData();
-    formData.append("file", file);
+  const toBase64 = useCallback((value: string): string => {
+    const bytes = new TextEncoder().encode(value);
+    let binary = "";
 
-    const response = await fetch("/api/media/upload/video", {
-      method: "POST",
-      body: formData,
-      headers: {
-        "x-file-name": file.name,
-        "x-file-type": file.type || "video/mp4",
-      },
-    });
-
-    const payload = (await response.json().catch(() => null)) as { error?: string; url?: string } | null;
-    if (!response.ok || !payload?.url) {
-      throw new Error(payload?.error ?? "Failed to upload video.");
+    for (const byte of bytes) {
+      binary += String.fromCharCode(byte);
     }
 
-    return payload.url;
+    return btoa(binary);
   }, []);
+
+  const uploadVideoFile = useCallback(async (file: File): Promise<string> => {
+    const initResponse = await fetch("/api/media/upload/video", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        action: "init",
+        fileName: file.name,
+        mimeType: file.type || "video/mp4",
+      }),
+    });
+
+    const initPayload = (await initResponse.json().catch(() => null)) as
+      | { error?: string; uploadUrl?: string; assemblyId?: string }
+      | null;
+
+    if (!initResponse.ok || !initPayload?.uploadUrl || !initPayload.assemblyId) {
+      throw new Error(initPayload?.error ?? "Failed to prepare video upload.");
+    }
+
+    const uploadResponse = await fetch(initPayload.uploadUrl, {
+      method: "PATCH",
+      headers: {
+        "Tus-Resumable": "1.0.0",
+        "Upload-Offset": "0",
+        "Upload-Length": String(file.size),
+        "Content-Type": "application/offset+octet-stream",
+        "Upload-Metadata":
+          `filename ${toBase64(file.name)},filetype ${toBase64(file.type || "video/mp4")}`,
+      },
+      body: file,
+    });
+
+    if (!uploadResponse.ok) {
+      const text = await uploadResponse.text().catch(() => "");
+      throw new Error(text || "Failed to upload video.");
+    }
+
+    const completeResponse = await fetch("/api/media/upload/video", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        action: "complete",
+        assemblyId: initPayload.assemblyId,
+      }),
+    });
+
+    const completePayload = (await completeResponse.json().catch(() => null)) as { error?: string; url?: string } | null;
+    if (!completeResponse.ok || !completePayload?.url) {
+      throw new Error(completePayload?.error ?? "Failed to upload video.");
+    }
+
+    return completePayload.url;
+  }, [toBase64]);
 
   const onPickVideo = useCallback(
     async (event: ChangeEvent<HTMLInputElement>) => {

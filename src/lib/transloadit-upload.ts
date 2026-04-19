@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import { Readable } from "node:stream";
 
 import { Transloadit } from "transloadit";
 
@@ -12,6 +13,19 @@ type TransloaditResultFile = {
 type TransloaditAssemblyStatus = {
   uploads?: Record<string, TransloaditResultFile[] | undefined>;
   results?: Record<string, TransloaditResultFile[] | undefined>;
+  upload_urls?: Record<string, string | undefined>;
+  assembly_id?: string | null;
+  assembly_url?: string | null;
+  assembly_ssl_url?: string | null;
+  error?: string | null;
+  ok?: string | null;
+};
+
+type VideoUploadSession = {
+  assemblyId: string;
+  assemblyUrl: string;
+  uploadUrl: string;
+  fieldName: string;
 };
 
 const createTempDirectory = (): string => {
@@ -68,6 +82,10 @@ const extractAssemblyFileUrl = (
   return null;
 };
 
+const sleep = async (milliseconds: number): Promise<void> => {
+  await new Promise((resolve) => setTimeout(resolve, milliseconds));
+};
+
 const writeTempBuffer = (buffer: Buffer, filename: string): { tempDirectory: string; inputPath: string } => {
   const tempDirectory = createTempDirectory();
   const inputPath = path.join(tempDirectory, filename);
@@ -111,6 +129,77 @@ export const uploadBufferToTransloadit = async (
     if (fs.existsSync(inputPath)) fs.unlinkSync(inputPath);
     if (fs.existsSync(tempDirectory)) fs.rmSync(tempDirectory, { recursive: true, force: true });
   }
+};
+
+export const createVideoUploadSession = async (fileName: string, mimeType: string): Promise<VideoUploadSession> => {
+  const client = getTransloaditClient();
+  const fieldName = "video";
+  const uploadTemplate = {
+    steps: {
+      ":original": {
+        robot: "/upload/handle",
+        result: true,
+      },
+    },
+    fields: {
+      file_name: fileName,
+      mime_type: mimeType,
+    },
+  };
+
+  const assemblyPromise = client.createAssembly({
+    uploadBehavior: "none",
+    uploads: {
+      [fieldName]: Readable.from([]),
+    },
+    params: uploadTemplate,
+  });
+
+  const assemblyId = assemblyPromise.assemblyId;
+  const result = (await assemblyPromise) as TransloaditAssemblyStatus;
+  const uploadUrl = result.upload_urls?.[fieldName]?.trim();
+  const assemblyUrl = (result.assembly_ssl_url ?? result.assembly_url ?? "").trim();
+
+  if (!assemblyId) {
+    throw new Error("Transloadit did not return an assembly id for the video upload session.");
+  }
+
+  if (!uploadUrl) {
+    throw new Error("Transloadit did not return a direct upload URL for the video upload session.");
+  }
+
+  if (!assemblyUrl) {
+    throw new Error("Transloadit did not return an assembly URL for the video upload session.");
+  }
+
+  return {
+    assemblyId,
+    assemblyUrl,
+    uploadUrl,
+    fieldName,
+  };
+};
+
+export const waitForVideoAssemblyUrl = async (assemblyId: string, timeoutMs = 180000): Promise<string> => {
+  const client = getTransloaditClient();
+  const startedAt = Date.now();
+
+  while (Date.now() - startedAt < timeoutMs) {
+    const status = (await client.getAssembly(assemblyId)) as TransloaditAssemblyStatus;
+
+    const uploadedUrl = extractAssemblyFileUrl(status, [":original", "exported"]);
+    if (uploadedUrl) {
+      return uploadedUrl;
+    }
+
+    if (status.error) {
+      throw new Error(typeof status.error === "string" ? status.error : "Transloadit video assembly failed.");
+    }
+
+    await sleep(2000);
+  }
+
+  throw new Error("Timed out waiting for the Transloadit video upload to finish processing.");
 };
 
 export const extractFrameFromVideoWithTransloadit = async (
