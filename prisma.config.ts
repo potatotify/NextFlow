@@ -18,7 +18,7 @@ const getDatabaseUrl = (): string => {
     }
   }
 
-  throw new Error("DATABASE_URL is not configured. Set it in environment variables or .env.local.");
+  return "postgresql://postgres:postgres@localhost:5432/nextflow?schema=public";
 };
 
 export default defineConfig({
