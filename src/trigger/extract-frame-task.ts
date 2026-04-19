@@ -127,31 +127,26 @@ const getFfmpegInstallerBinary = (): string => {
 const resolveFfmpegBinary = (): string | null => {
   const envBinary = process.env.FFMPEG_BIN?.trim() || process.env.FFMPEG_PATH?.trim();
   if (envBinary && fileExists(envBinary)) {
-    console.log(`[ffmpeg] Using env binary: ${envBinary}`);
     return envBinary;
   }
 
   const staticBinary = getFfmpegStaticBinary();
   if (staticBinary && fileExists(staticBinary)) {
-    console.log(`[ffmpeg] Using ffmpeg-static: ${staticBinary}`);
     return staticBinary;
   }
 
   const installerBinary = getFfmpegInstallerBinary();
   if (installerBinary && fileExists(installerBinary)) {
-    console.log(`[ffmpeg] Using @ffmpeg-installer binary: ${installerBinary}`);
     return installerBinary;
   }
 
   const nodeModulesBinary = findFfmpegFromNodeModules();
   if (nodeModulesBinary) {
-    console.log(`[ffmpeg] Found in node_modules: ${nodeModulesBinary}`);
     return nodeModulesBinary;
   }
 
   const pathBinary = findFfmpegInPath();
   if (pathBinary) {
-    console.log(`[ffmpeg] Found in PATH: ${pathBinary}`);
     return pathBinary;
   }
 
@@ -182,8 +177,6 @@ export const runExtractFrameNode = async (payload: ExtractFrameTaskPayload): Pro
     );
   }
 
-  console.log(`[extract-frame] Using ffmpeg binary: ${ffmpegBinary}`);
-
   const tempDirectory = createTempDirectory();
   const fileExtension = extensionByMimeType[mimeType] ?? "mp4";
   const inputPath = path.join(tempDirectory, `input-video.${fileExtension}`);
@@ -205,8 +198,6 @@ export const runExtractFrameNode = async (payload: ExtractFrameTaskPayload): Pro
       outputPath,
     ];
 
-    console.log(`[extract-frame] Running: ${ffmpegBinary} ${args.join(" ")}`);
-
     await execFileAsync(ffmpegBinary, args);
 
     const frameBuffer = fs.readFileSync(outputPath);
@@ -217,9 +208,6 @@ export const runExtractFrameNode = async (payload: ExtractFrameTaskPayload): Pro
       triggerRunId: null,
     };
   } catch (error) {
-    const err = error instanceof Error ? error.message : String(error);
-    console.error(`[extract-frame] Error: ${err}`);
-
     throw error;
   } finally {
     if (fs.existsSync(inputPath)) fs.unlinkSync(inputPath);

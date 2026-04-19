@@ -130,31 +130,26 @@ const getFfmpegInstallerBinary = (): string => {
 const resolveFfmpegBinary = (): string | null => {
   const envBinary = process.env.FFMPEG_BIN?.trim() || process.env.FFMPEG_PATH?.trim();
   if (envBinary && fileExists(envBinary)) {
-    console.log(`[ffmpeg] Using env binary: ${envBinary}`);
     return envBinary;
   }
 
   const staticBinary = getFfmpegStaticBinary();
   if (staticBinary && fileExists(staticBinary)) {
-    console.log(`[ffmpeg] Using ffmpeg-static: ${staticBinary}`);
     return staticBinary;
   }
 
   const installerBinary = getFfmpegInstallerBinary();
   if (installerBinary && fileExists(installerBinary)) {
-    console.log(`[ffmpeg] Using @ffmpeg-installer binary: ${installerBinary}`);
     return installerBinary;
   }
 
   const nodeModulesBinary = findFfmpegFromNodeModules();
   if (nodeModulesBinary) {
-    console.log(`[ffmpeg] Found in node_modules: ${nodeModulesBinary}`);
     return nodeModulesBinary;
   }
 
   const pathBinary = findFfmpegInPath();
   if (pathBinary) {
-    console.log(`[ffmpeg] Found in PATH: ${pathBinary}`);
     return pathBinary;
   }
 
@@ -215,7 +210,6 @@ export const runCropImageNode = async (payload: CropImageTaskPayload): Promise<C
     if (fs.existsSync(outputPath)) fs.unlinkSync(outputPath);
     if (fs.existsSync(tempDirectory)) fs.rmSync(tempDirectory, { recursive: true, force: true });
   }
-
 };
 
 export const cropImageTask = task({
