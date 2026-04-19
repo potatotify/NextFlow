@@ -1,36 +1,152 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# NextFlow
 
-## Getting Started
+NextFlow is a visual AI workflow builder where users create and run media + LLM pipelines by connecting nodes on a canvas.
 
-First, run the development server:
+## Features
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+- User authentication and protected workflows with Clerk
+- Workflow builder with 6 node types:
+	- Text Node
+	- Upload Image
+	- Upload Video
+	- Run Any LLM
+	- Crop Image
+	- Extract Frame
+- Full workflow execution with node-level status updates
+- Run single node or selected nodes for faster iteration
+- Image and video upload support via Transloadit
+- Workflow execution history with timestamped runs
+- Export and import workflows as JSON
+- Trigger.dev task execution for async/long-running jobs
+
+## Tech Stack
+
+- Next.js (App Router) + TypeScript
+- React Flow / XYFlow for visual graph editing
+- Zustand for client state
+- Prisma + PostgreSQL
+- Clerk for authentication
+- Trigger.dev for background task orchestration
+- FFmpeg for media operations
+- Transloadit for upload and media processing pipeline
+
+## Project Structure
+
+```text
+src/
+	app/          # App Router pages and API routes
+	components/   # UI and node components
+	lib/          # Shared server/client utilities
+	store/        # Zustand stores
+	trigger/      # Trigger.dev task definitions
+	types/        # Shared TypeScript types
+prisma/         # Prisma schema and migrations
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Prerequisites
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+- Node.js 20+
+- pnpm 10+
+- PostgreSQL database
+- Accounts/keys for Clerk, Trigger.dev, Google Gemini, and Transloadit
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Environment Variables
 
-## Learn More
+Create a `.env.local` file in the repository root.
 
-To learn more about Next.js, take a look at the following resources:
+Required variables:
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+```dotenv
+DATABASE_URL=
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=
+CLERK_SECRET_KEY=
+NEXT_PUBLIC_CLERK_SIGN_IN_URL=/sign-in
+NEXT_PUBLIC_CLERK_SIGN_UP_URL=/sign-up
+NEXT_PUBLIC_CLERK_AFTER_SIGN_IN_URL=/workflow
+NEXT_PUBLIC_CLERK_AFTER_SIGN_UP_URL=/workflow
 
-## Deploy on Vercel
+GEMINI_API_KEY=
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+TRIGGER_SECRET_KEY=
+TRIGGER_PROJECT_ID=
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+NEXT_PUBLIC_TRANSLOADIT_KEY=
+TRANSLOADIT_SECRET=
+
+NEXT_PUBLIC_APP_URL=http://localhost:3000
+```
+
+## Local Development
+
+Install dependencies:
+
+```bash
+pnpm install
+```
+
+Generate Prisma client:
+
+```bash
+pnpm run db:generate
+```
+
+Push schema to database (if needed):
+
+```bash
+pnpm run db:push
+```
+
+Start Next.js app:
+
+```bash
+pnpm dev
+```
+
+Open http://localhost:3000
+
+## Trigger.dev
+
+Run Trigger tasks locally:
+
+```bash
+pnpm run trigger:dev
+```
+
+Deploy Trigger tasks:
+
+```bash
+pnpm run trigger:deploy
+```
+
+## Build and Production
+
+Build:
+
+```bash
+pnpm run db:generate
+pnpm build
+```
+
+Start:
+
+```bash
+pnpm start
+```
+
+## Deployment Notes
+
+- Keep app env vars in Vercel and task env vars in Trigger.dev in sync.
+- Video uploads are routed through a production-safe Transloadit direct upload flow.
+- Ensure `DATABASE_URL` is configured for runtime database access.
+
+## Scripts
+
+- `pnpm dev` - run local Next.js app
+- `pnpm build` - production build
+- `pnpm start` - run production server
+- `pnpm lint` - run ESLint
+- `pnpm run db:generate` - generate Prisma client
+- `pnpm run db:push` - push Prisma schema
+- `pnpm run trigger:dev` - run Trigger.dev locally
+- `pnpm run trigger:deploy` - deploy Trigger.dev tasks
