@@ -17,7 +17,24 @@ const statusClassByValue = {
   PARTIAL: "bg-(--nf-warning-bg) text-(--nf-warning-text)",
 };
 
+const formatRunTimestamp = (startedAt: string): string => {
+  const date = new Date(startedAt);
+  if (Number.isNaN(date.getTime())) {
+    return "Unknown run time";
+  }
+
+  return new Intl.DateTimeFormat(undefined, {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(date);
+};
+
 export const RunEntry: FC<RunEntryProps> = ({ run, expanded, onToggle, onDelete }) => {
+  const runTimestamp = formatRunTimestamp(run.startedAt);
+
   return (
     <div className="rounded-2xl border border-(--nf-border) bg-(--nf-panel)">
       <div className="flex items-center justify-between gap-3 px-3 py-3 text-left">
@@ -30,6 +47,9 @@ export const RunEntry: FC<RunEntryProps> = ({ run, expanded, onToggle, onDelete 
           </div>
           <p className="mt-1 text-[11px] text-(--nf-text-secondary)">
             {run.nodeCount} nodes · {run.durationMs ?? 0} ms
+          </p>
+          <p className="mt-1 text-[11px] text-(--nf-text-secondary)">
+            {runTimestamp}
           </p>
         </button>
 
