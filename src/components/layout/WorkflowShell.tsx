@@ -605,18 +605,53 @@ export const WorkflowShell: FC<WorkflowShellProps> = ({ children }) => {
                   <div className="py-10 text-center text-sm text-neutral-500">No workflows found.</div>
                 ) : (
                   workflowList.map((wf)=>(
-                    <button
-                      key={wf.id}
-                      onClick={()=>void loadWorkflowById(wf.id)}
-                      className="flex w-full items-center justify-between py-3 px-2 hover:bg-white/5 rounded-lg transition-colors"
-                    >
-                      <span>{wf.name}</span>
+                    <div key={wf.id} className="flex items-center justify-between py-2 px-1">
+                      <button
+                        onClick={()=>void loadWorkflowById(wf.id)}
+                        className="flex-1 text-left py-2 px-2 hover:bg-white/5 rounded-lg transition-colors"
+                      >
+                        <div className="flex items-center justify-between">
+                          <span className="truncate">{wf.name}</span>
+                          <span className="flex items-center gap-1 text-xs text-neutral-400">
+                            <Clock className="h-3 w-3"/>
+                            {formatRelativeTime(wf.updatedAt)}
+                          </span>
+                        </div>
+                      </button>
 
-                      <span className="flex items-center gap-1 text-xs text-neutral-400">
-                        <Clock className="h-3 w-3"/>
-                        {formatRelativeTime(wf.updatedAt)}
-                      </span>
-                    </button>
+                      <div className="ml-2 flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={async (e)=>{
+                            e.stopPropagation();
+                            const ok = window.confirm(`Delete workflow "${wf.name}" permanently? This cannot be undone.`);
+                            if(!ok) return;
+
+                            try{
+                              const resp = await fetch(`/api/workflow/delete?workflowId=${encodeURIComponent(wf.id)}`, { method: "DELETE" });
+                              if(!resp.ok) throw new Error("Delete failed");
+
+                              setWorkflowList((list)=>list.filter(item=>item.id!==wf.id));
+
+                              addToast({ type: "success", title: "Workflow deleted", message: `${wf.name} was removed.` });
+
+                              if(workflowId === wf.id){
+                                setWorkflowId(null);
+                                setWorkflowName("Untitled");
+                                setNodes([]);
+                                setEdges([]);
+                                lastSavedSignatureRef.current = "";
+                              }
+                            }catch(err){
+                              addToast({ type: "error", title: "Delete failed", message: err instanceof Error? err.message: "Could not delete workflow" });
+                            }
+                          }}
+                          className="rounded-md px-2 py-1 text-xs text-red-400 hover:bg-red-600/10"
+                        >
+                          Delete
+                        </button>
+                      </div>
+                    </div>
                   ))
                 )}
               </div>
