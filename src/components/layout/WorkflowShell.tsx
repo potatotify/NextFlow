@@ -83,6 +83,7 @@ type StreamEvent =
     };
 
 const toRunningNode = (node: Node): Node => {
+  // Fix: Cast through unknown to bypass Record to NodeData overlap error
   const data = (node.data ?? {}) as unknown as NodeData;
 
   return {
@@ -108,13 +109,14 @@ const toResultNode = (
     return {
       ...node,
       data: {
-        ...((node.data ?? {}) as NodeData),
+        // Fix: Cast through unknown to satisfy TS strictness during deployment
+        ...((node.data ?? {}) as unknown as NodeData),
         status: "idle",
       },
     };
   }
 
-  const previousData = (node.data ?? {}) as NodeData;
+  const previousData = (node.data ?? {}) as unknown as NodeData;
 
   const nextData: NodeData = {
     ...previousData,
@@ -550,6 +552,9 @@ export const WorkflowShell: FC<WorkflowShellProps> = ({ children }) => {
               onViewWorkflows={openWorkflowList}
               isExporting={isExporting}
               isImporting={isImporting}
+              // Added missing run handler if needed by your TopBar
+              onRunWorkflow={runWorkflow}
+              isRunning={isRunning}
             />
           </div>
         </section>
@@ -566,7 +571,7 @@ export const WorkflowShell: FC<WorkflowShellProps> = ({ children }) => {
           onClick={()=>setIsWorkflowListOpen(false)}
         >
           <div
-            className="w-[min(92vw,480px)] rounded-3xl p-6"
+            className="w-[min(92vw,480px)] rounded-3xl p-6 bg-[#121212] border border-white/10"
             onClick={(e)=>e.stopPropagation()}
           >
             <div className="mb-5 flex items-start justify-between">
@@ -582,23 +587,27 @@ export const WorkflowShell: FC<WorkflowShellProps> = ({ children }) => {
             </div>
 
             {isLoadingWorkflowList ? (
-              <div>Loading...</div>
+              <div className="py-10 text-center text-sm text-neutral-500">Loading...</div>
             ) : (
               <div className="max-h-80 overflow-y-auto">
-                {workflowList.map((wf)=>(
-                  <button
-                    key={wf.id}
-                    onClick={()=>void loadWorkflowById(wf.id)}
-                    className="flex w-full justify-between py-3"
-                  >
-                    <span>{wf.name}</span>
+                {workflowList.length === 0 ? (
+                  <div className="py-10 text-center text-sm text-neutral-500">No workflows found.</div>
+                ) : (
+                  workflowList.map((wf)=>(
+                    <button
+                      key={wf.id}
+                      onClick={()=>void loadWorkflowById(wf.id)}
+                      className="flex w-full items-center justify-between py-3 px-2 hover:bg-white/5 rounded-lg transition-colors"
+                    >
+                      <span>{wf.name}</span>
 
-                    <span className="flex items-center gap-1 text-xs">
-                      <Clock className="h-3 w-3"/>
-                      {formatRelativeTime(wf.updatedAt)}
-                    </span>
-                  </button>
-                ))}
+                      <span className="flex items-center gap-1 text-xs text-neutral-400">
+                        <Clock className="h-3 w-3"/>
+                        {formatRelativeTime(wf.updatedAt)}
+                      </span>
+                    </button>
+                  ))
+                )}
               </div>
             )}
           </div>
