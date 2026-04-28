@@ -3,6 +3,7 @@
 import { useAuth } from "@clerk/nextjs";
 import type { Edge, Node } from "@xyflow/react";
 import { useCallback, useEffect, useRef, useState, type FC, type ReactNode } from "react";
+import { X, Clock } from "lucide-react";
 
 import { LeftSidebar } from "@/components/layout/LeftSidebar";
 import { WorkflowPersistence } from "@/components/layout/WorkflowPersistence";
@@ -18,14 +19,6 @@ interface WorkflowShellProps {
   children: ReactNode;
 }
 
-interface ExecuteResponse {
-  nodeRuns?: Array<{
-    nodeId: string;
-    status: "SUCCESS" | "FAILED";
-    outputs?: Record<string, unknown>;
-  }>;
-}
-
 interface SaveResponse {
   workflowId: string;
 }
@@ -39,6 +32,33 @@ interface ExportResponse {
     viewport?: { x: number; y: number; zoom: number } | null;
   };
 }
+
+interface WorkflowListItem {
+  id: string;
+  name: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+interface WorkflowListResponse {
+  workflows: WorkflowListItem[];
+}
+
+interface WorkflowLoadResponse {
+  workflow: {
+    id: string;
+    name: string;
+    nodes: Node[];
+    edges: Edge[];
+    viewport?: { x: number; y: number; zoom: number } | null;
+  } | null;
+}
+
+type StreamEvent =
+  | { type: "layer_start"; nodeIds: string[] }
+  | { type: "node_done"; nodeResult: { nodeId: string; status: "SUCCESS" | "FAILED"; outputs?: Record<string, unknown>; error?: string } }
+  | { type: "complete"; result: { nodeRuns: Array<{ nodeId: string; status: "SUCCESS" | "FAILED" }> } }
+  | { type: "error"; message: string };
 
 const toRunningNode = (node: Node): Node => {
   const data = (node.data ?? {}) as unknown as NodeData;
@@ -95,6 +115,63 @@ const toResultNode = (
   };
 };
 
+const formatRelativeTime = (dateStr: string): string => {
+  const date = new Date(dateStr);
+  const now = new Date();
+  const diffMs = now.getTime() - date.getTime();
+  const diffMins = Math.floor(diffMs / 60000);
+  if (diffMins < 1) return "Just now";
+  if (diffMins < 60) return `${diffMins}m ago`;
+  const diffHours = Math.floor(diffMins / 60);
+  if (diffHours < 24) return `${diffHours}h ago`;
+  const diffDays = Math.floor(diffHours / 24);
+  return `${diffDays}d ago`;
+};
+
+const toResultNode = (
+  node: Node,
+  runResult: { status: "SUCCESS" | "FAILED"; outputs?: Record<string, unknown>; error?: string } | undefined,
+): Node => {
+  if (!runResult) {
+    return {
+      ...node,
+      data: {
+        ...((node.data ?? {}) as unknown as NodeData),
+        status: "idle",
+      },
+    };
+  }
+
+  const previousData = (node.data ?? {}) as unknown as NodeData;
+  const nextData: NodeData = {
+    ...previousData,
+    status: runResult.status === "SUCCESS" ? "success" : "error",
+  };
+
+  if (previousData.nodeType === "llmNode" && typeof runResult.outputs?.output === "string") {
+    nextData.llmResult = runResult.outputs.output;
+    nextData.llmError = undefined;
+  }
+
+  if (previousData.nodeType === "llmNode" && runResult.status === "FAILED") {
+    nextData.llmResult = "";
+    nextData.llmError = runResult.error ?? "LLM node requires a prompt before execution.";
+  }
+
+  if (previousData.nodeType === "cropImageNode" && typeof runResult.outputs?.output === "string") {
+    nextData.croppedImageUrl = runResult.outputs.output;
+  }
+
+  if (previousData.nodeType === "extractFrameNode" && typeof runResult.outputs?.output === "string") {
+    nextData.extractedFrameUrl = runResult.outputs.output;
+  }
+
+  return {
+    ...node,
+    data: nextData as unknown as Record<string, unknown>,
+  };
+};
+
 export const WorkflowShell: FC<WorkflowShellProps> = ({ children }) => {
   const { isLoaded, userId } = useAuth();
   const [leftCollapsed, setLeftCollapsed] = useState(true);
@@ -103,6 +180,9 @@ export const WorkflowShell: FC<WorkflowShellProps> = ({ children }) => {
   const [isRunning, setIsRunning] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
+  const [isWorkflowListOpen, setIsWorkflowListOpen] = useState(false);
+  const [workflowList, setWorkflowList] = useState<WorkflowListItem[]>([]);
+  const [isLoadingWorkflowList, setIsLoadingWorkflowList] = useState(false);
 
   const workflowName = useWorkflowStore((state) => state.workflowName);
   const setWorkflowName = useWorkflowStore((state) => state.setWorkflowName);
@@ -290,19 +370,22 @@ export const WorkflowShell: FC<WorkflowShellProps> = ({ children }) => {
     if (isRunning) return;
 
     setIsRunning(true);
-    setNodes(nodes.map(toRunningNode));
+
+    const currentNodes = useWorkflowStore.getState().nodes;
+    const currentEdges = useWorkflowStore.getState().edges;
+    const currentWorkflowId = useWorkflowStore.getState().workflowId;
 
     try {
-      const response = await fetch("/api/execute", {
+      const response = await fetch("/api/execute/stream", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
           scope: "FULL",
-          workflowId,
-          nodes,
-          edges,
+          workflowId: currentWorkflowId,
+          nodes: currentNodes,
+          edges: currentEdges,
         }),
       });
 
@@ -310,20 +393,57 @@ export const WorkflowShell: FC<WorkflowShellProps> = ({ children }) => {
         throw new Error("Failed to execute workflow");
       }
 
-      const result = (await response.json()) as ExecuteResponse;
-      const runResultsByNodeId = new Map(result.nodeRuns?.map((run) => [run.nodeId, run]));
+      const reader = response.body?.getReader();
+      if (!reader) throw new Error("Streaming not supported");
 
-      const latestNodes = useWorkflowStore.getState().nodes;
-      setNodes(latestNodes.map((node) => toResultNode(node, runResultsByNodeId.get(node.id))));
-      const failedCount = result.nodeRuns?.filter((run) => run.status === "FAILED").length ?? 0;
-      addToast({
-        type: failedCount > 0 ? "info" : "success",
-        title: failedCount > 0 ? "Workflow finished with issues" : "Workflow completed",
-        message:
-          failedCount > 0
-            ? `${failedCount} node${failedCount === 1 ? "" : "s"} failed. Check run history for details.`
-            : "All nodes executed successfully.",
-      });
+      const decoder = new TextDecoder();
+      let buffer = "";
+      let failedCount = 0;
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split("\n");
+        buffer = lines.pop() ?? "";
+
+        for (const line of lines) {
+          if (!line.startsWith("data: ")) continue;
+          const jsonStr = line.slice(6).trim();
+          if (!jsonStr) continue;
+
+          const event = JSON.parse(jsonStr) as StreamEvent;
+
+          if (event.type === "layer_start") {
+            const layerIds = new Set(event.nodeIds);
+            const latestNodes = useWorkflowStore.getState().nodes;
+            setNodes(
+              latestNodes.map((node) => (layerIds.has(node.id) ? toRunningNode(node) : node)),
+            );
+          } else if (event.type === "node_done") {
+            const { nodeResult } = event;
+            const latestNodes = useWorkflowStore.getState().nodes;
+            setNodes(
+              latestNodes.map((node) =>
+                node.id === nodeResult.nodeId ? toResultNode(node, nodeResult) : node,
+              ),
+            );
+            if (nodeResult.status === "FAILED") failedCount += 1;
+          } else if (event.type === "complete") {
+            addToast({
+              type: failedCount > 0 ? "info" : "success",
+              title: failedCount > 0 ? "Workflow finished with issues" : "Workflow completed",
+              message:
+                failedCount > 0
+                  ? `${failedCount} node${failedCount === 1 ? "" : "s"} failed. Check run history for details.`
+                  : "All nodes executed successfully.",
+            });
+          } else if (event.type === "error") {
+            throw new Error(event.message);
+          }
+        }
+      }
     } catch {
       const latestNodes = useWorkflowStore.getState().nodes;
       setNodes(
@@ -343,7 +463,62 @@ export const WorkflowShell: FC<WorkflowShellProps> = ({ children }) => {
     } finally {
       setIsRunning(false);
     }
-  }, [addToast, edges, isRunning, nodes, setNodes, workflowId]);
+  }, [addToast, isRunning, setNodes]);
+
+  const openWorkflowList = useCallback(async () => {
+    setIsWorkflowListOpen(true);
+    setIsLoadingWorkflowList(true);
+
+    try {
+      const response = await fetch("/api/workflow/list");
+      if (!response.ok) throw new Error("Failed to load workflow list");
+      const data = (await response.json()) as WorkflowListResponse;
+      setWorkflowList(data.workflows);
+    } catch {
+      addToast({
+        type: "error",
+        title: "Could not load workflows",
+        message: "Failed to fetch your saved workflows.",
+      });
+      setIsWorkflowListOpen(false);
+    } finally {
+      setIsLoadingWorkflowList(false);
+    }
+  }, [addToast]);
+
+  const loadWorkflowById = useCallback(
+    async (id: string) => {
+      try {
+        const response = await fetch(`/api/workflow/load?workflowId=${encodeURIComponent(id)}`);
+        if (!response.ok) throw new Error("Failed to load workflow");
+        const data = (await response.json()) as WorkflowLoadResponse;
+        if (!data.workflow) throw new Error("Workflow not found");
+
+        setWorkflowId(data.workflow.id);
+        setWorkflowName(data.workflow.name);
+        setNodes(data.workflow.nodes);
+        setEdges(data.workflow.edges);
+        lastSavedSignatureRef.current = JSON.stringify({
+          name: data.workflow.name,
+          nodes: data.workflow.nodes,
+          edges: data.workflow.edges,
+        });
+        setIsWorkflowListOpen(false);
+        addToast({
+          type: "success",
+          title: "Workflow loaded",
+          message: `"${data.workflow.name}" is ready on the canvas.`,
+        });
+      } catch {
+        addToast({
+          type: "error",
+          title: "Load failed",
+          message: "Could not load the selected workflow.",
+        });
+      }
+    },
+    [addToast, setEdges, setNodes, setWorkflowId, setWorkflowName],
+  );
 
   useEffect(() => {
     if (!isLoaded || !userId) return;
@@ -386,6 +561,7 @@ export const WorkflowShell: FC<WorkflowShellProps> = ({ children }) => {
               onWorkflowNameChange={setWorkflowName}
               onExportWorkflow={exportWorkflow}
               onImportWorkflow={importWorkflow}
+              onViewWorkflows={openWorkflowList}
               isExporting={isExporting}
               isImporting={isImporting}
             />
@@ -394,6 +570,60 @@ export const WorkflowShell: FC<WorkflowShellProps> = ({ children }) => {
 
         <RightSidebar collapsed={rightCollapsed} onToggle={() => setRightCollapsed((value) => !value)} />
       </div>
+
+      {isWorkflowListOpen ? (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/55 backdrop-blur-[2px]"
+          onClick={() => setIsWorkflowListOpen(false)}
+        >
+          <div
+            className="w-[min(92vw,480px)] rounded-3xl border border-(--nf-border) bg-(--nf-panel) p-6 shadow-[0_24px_80px_rgba(0,0,0,0.6)]"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="mb-5 flex items-start justify-between gap-4">
+              <div>
+                <h3 className="text-2xl font-semibold text-(--nf-text)">My Workflows</h3>
+                <p className="mt-1 text-sm text-(--nf-text-secondary)">Select a workflow to load it onto the canvas.</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsWorkflowListOpen(false)}
+                className="grid h-9 w-9 place-items-center rounded-full border border-(--nf-border) text-(--nf-text-secondary) transition hover:bg-(--nf-hover)"
+                aria-label="Close workflow list"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            {isLoadingWorkflowList ? (
+              <div className="flex items-center justify-center py-10 text-sm text-(--nf-text-secondary)">
+                Loading…
+              </div>
+            ) : workflowList.length === 0 ? (
+              <div className="flex items-center justify-center py-10 text-sm text-(--nf-text-secondary)">
+                No saved workflows yet.
+              </div>
+            ) : (
+              <div className="max-h-80 space-y-1 overflow-y-auto pr-1">
+                {workflowList.map((wf) => (
+                  <button
+                    key={wf.id}
+                    type="button"
+                    onClick={() => void loadWorkflowById(wf.id)}
+                    className="flex w-full items-center justify-between rounded-xl px-3 py-3 text-left transition hover:bg-(--nf-hover)"
+                  >
+                    <span className="truncate text-sm font-medium text-(--nf-text)">{wf.name}</span>
+                    <span className="ml-3 flex shrink-0 items-center gap-1 text-[11px] text-(--nf-text-secondary)">
+                      <Clock className="h-3 w-3" />
+                      {formatRelativeTime(wf.updatedAt)}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      ) : null}
     </main>
   );
 };

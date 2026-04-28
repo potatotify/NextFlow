@@ -3,6 +3,7 @@
 import {
   Background,
   BackgroundVariant,
+  Controls,
   MiniMap,
   ReactFlow,
   ReactFlowProvider,
@@ -563,11 +564,8 @@ const WorkflowCanvasInternal: FC = () => {
     setIsNodeRunInFlight(true);
     setMessage(null);
 
-    const latestNodesBeforeRun = useWorkflowStore.getState().nodes;
-    setNodes(latestNodesBeforeRun.map((node) => (selectedNodeSet.has(node.id) ? toRunningNode(node) : node)));
-
     try {
-      const response = await fetch("/api/execute", {
+      const response = await fetch("/api/execute/stream", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -584,15 +582,48 @@ const WorkflowCanvasInternal: FC = () => {
         throw new Error("Failed to execute selected nodes");
       }
 
-      const result = (await response.json()) as ExecuteResponse;
-      const runByNodeId = new Map(result.nodeRuns?.map((run) => [run.nodeId, run]));
+      const reader = response.body?.getReader();
+      if (!reader) throw new Error("Streaming not supported");
 
-      const latestNodesAfterRun = useWorkflowStore.getState().nodes;
-      setNodes(
-        latestNodesAfterRun.map((node) =>
-          selectedNodeSet.has(node.id) ? toResultNode(node, runByNodeId.get(node.id)) : node,
-        ),
-      );
+      const decoder = new TextDecoder();
+      let buffer = "";
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split("\n");
+        buffer = lines.pop() ?? "";
+
+        for (const line of lines) {
+          if (!line.startsWith("data: ")) continue;
+          const jsonStr = line.slice(6).trim();
+          if (!jsonStr) continue;
+
+          const event = JSON.parse(jsonStr) as { type: string; nodeIds?: string[]; nodeResult?: { nodeId: string; status: "SUCCESS" | "FAILED"; outputs?: Record<string, unknown>; error?: string }; message?: string };
+
+          if (event.type === "layer_start" && event.nodeIds) {
+            const layerIds = new Set(event.nodeIds);
+            const latestNodes = useWorkflowStore.getState().nodes;
+            setNodes(
+              latestNodes.map((node) =>
+                selectedNodeSet.has(node.id) && layerIds.has(node.id) ? toRunningNode(node) : node,
+              ),
+            );
+          } else if (event.type === "node_done" && event.nodeResult) {
+            const nodeResult = event.nodeResult;
+            const latestNodes = useWorkflowStore.getState().nodes;
+            setNodes(
+              latestNodes.map((node) =>
+                node.id === nodeResult.nodeId ? toResultNode(node, nodeResult) : node,
+              ),
+            );
+          } else if (event.type === "error") {
+            throw new Error(event.message ?? "Execution failed");
+          }
+        }
+      }
     } catch {
       const latestNodesAfterRun = useWorkflowStore.getState().nodes;
       setNodes(
@@ -615,7 +646,7 @@ const WorkflowCanvasInternal: FC = () => {
       setSelectedNodes([]);
       setCommittedSelectionRect(null);
     }
-  }, [edges, isNodeRunInFlight, nodes, selectedNodes, setMessage, setNodes, workflowId]);
+  }, [edges, isNodeRunInFlight, nodes, selectedNodes, setNodes, workflowId]);
 
   const duplicateNode = useCallback(() => {
     if (!contextMenu) return;
@@ -1451,6 +1482,12 @@ const WorkflowCanvasInternal: FC = () => {
             border: theme === "light" ? "1px solid #d9dee8" : "1px solid #262626",
             borderRadius: 12,
           }}
+        />
+        <Controls
+          className="nextflow-controls"
+          position="bottom-right"
+          showInteractive={false}
+          style={{ bottom: 168 }}
         />
       </ReactFlow>
     </div>
