@@ -223,6 +223,21 @@ export const WorkflowShell: FC<WorkflowShellProps> = ({ children }) => {
     });
   }, [addToast, setEdges, setNodes, setWorkflowId, setWorkflowName]);
 
+  const createNewWorkflow = useCallback(() => {
+    setWorkflowId(null);
+    setWorkflowName("Untitled");
+    setNodes([]);
+    setEdges([]);
+
+    lastSavedSignatureRef.current = "";
+
+    addToast({
+      type: "success",
+      title: "New workflow created",
+      message: "Start building your workflow from scratch.",
+    });
+  }, [addToast, setEdges, setNodes, setWorkflowId, setWorkflowName]);
+
   const saveWorkflow = useCallback(async () => {
     if (!isLoaded || !userId) return;
 
@@ -548,6 +563,7 @@ export const WorkflowShell: FC<WorkflowShellProps> = ({ children }) => {
               onExportWorkflow={exportWorkflow}
               onImportWorkflow={importWorkflow}
               onViewWorkflows={openWorkflowList}
+              onNewWorkflow={createNewWorkflow}
               isExporting={isExporting}
               isImporting={isImporting}
             />
