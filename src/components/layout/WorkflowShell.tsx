@@ -83,7 +83,6 @@ type StreamEvent =
     };
 
 const toRunningNode = (node: Node): Node => {
-  // Fix: Cast through unknown to bypass Record to NodeData overlap error
   const data = (node.data ?? {}) as unknown as NodeData;
 
   return {
@@ -109,7 +108,6 @@ const toResultNode = (
     return {
       ...node,
       data: {
-        // Fix: Cast through unknown to satisfy TS strictness during deployment
         ...((node.data ?? {}) as unknown as NodeData),
         status: "idle",
       },
@@ -552,9 +550,6 @@ export const WorkflowShell: FC<WorkflowShellProps> = ({ children }) => {
               onViewWorkflows={openWorkflowList}
               isExporting={isExporting}
               isImporting={isImporting}
-              // Added missing run handler if needed by your TopBar
-              onRunWorkflow={runWorkflow}
-              isRunning={isRunning}
             />
           </div>
         </section>
