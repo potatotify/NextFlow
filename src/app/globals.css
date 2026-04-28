@@ -172,6 +172,14 @@ body {
   border-bottom: 0 !important;
 }
 
+.nextflow-controls.react-flow__controls {
+  background: var(--nf-surface) !important;
+  border: 1px solid var(--nf-border) !important;
+  border-radius: 10px !important;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.28) !important;
+}
+
 .nextflow-minimap .react-flow__minimap-mask {
   fill: #000000c0;
 }

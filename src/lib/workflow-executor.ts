@@ -54,6 +54,8 @@ interface ExecuteWorkflowInput {
   nodes: Node[];
   edges: Edge[];
   runners: ExecutionRunners;
+  onLayerStart?: (nodeIds: string[]) => void;
+  onNodeComplete?: (result: NodeExecutionResult) => void;
 }
 
 type NodeOutputsById = Map<string, Record<string, unknown>>;
@@ -315,7 +317,7 @@ const executeNode = async (
   }
 };
 
-export const executeWorkflowGraph = async ({ nodes, edges, runners }: ExecuteWorkflowInput): Promise<WorkflowExecutionResult> => {
+export const executeWorkflowGraph = async ({ nodes, edges, runners, onLayerStart, onNodeComplete }: ExecuteWorkflowInput): Promise<WorkflowExecutionResult> => {
   const startedAtTime = Date.now();
   const outputsByNode: NodeOutputsById = new Map();
   const nodeRuns: NodeExecutionResult[] = [];
@@ -323,10 +325,13 @@ export const executeWorkflowGraph = async ({ nodes, edges, runners }: ExecuteWor
   const layers = buildExecutionLayers(nodes, edges);
 
   for (const layer of layers) {
+    onLayerStart?.(layer.map((n) => n.id));
+
     const layerResults = await Promise.all(
       layer.map(async (node) => {
         const inputs = resolveNodeInputs(node.id, edges, outputsByNode);
         const result = await executeNode(node, inputs, runners);
+        onNodeComplete?.(result);
         return result;
       }),
     );

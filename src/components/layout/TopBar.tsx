@@ -1,6 +1,6 @@
 "use client";
 
-import { ChevronDown, Download, Play, Upload } from "lucide-react";
+import { ChevronDown, Download, FolderOpen, Upload } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { FC } from "react";
 
@@ -9,6 +9,7 @@ interface TopBarProps {
   onWorkflowNameChange: (value: string) => void;
   onExportWorkflow: () => void;
   onImportWorkflow: (file: File) => void;
+  onViewWorkflows: () => void;
   isExporting: boolean;
   isImporting: boolean;
 }
@@ -18,6 +19,7 @@ export const TopBar: FC<TopBarProps> = ({
   onWorkflowNameChange,
   onExportWorkflow,
   onImportWorkflow,
+  onViewWorkflows,
   isExporting,
   isImporting,
 }) => {
@@ -79,6 +81,17 @@ export const TopBar: FC<TopBarProps> = ({
 
         {isMenuOpen ? (
           <div className="pointer-events-auto absolute left-0 top-full z-30 mt-2 w-64 overflow-hidden rounded-lg border border-(--nf-border) bg-(--nf-surface) p-2 shadow-[0_2px_6px_0_rgba(0,0,0,0.24)]">
+            <button
+              type="button"
+              onClick={() => {
+                onViewWorkflows();
+                setIsMenuOpen(false);
+              }}
+              className="flex h-10 w-full items-center gap-3 rounded-md px-3 text-left text-xs font-medium text-(--nf-text) hover:bg-(--nf-hover)"
+            >
+              <FolderOpen className="h-4 w-4 text-(--nf-text-secondary)" strokeWidth={2.2} />
+              My Workflows
+            </button>
             <button
               type="button"
               onClick={handleImportClick}
