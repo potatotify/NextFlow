@@ -57,6 +57,7 @@ export const UploadImageNode = ({ id, data, selected }: NodeProps) => {
           imageUrl: uploadedImageUrl,
           imageName: file.name,
         });
+        setPreviewSource(uploadedImageUrl);
       } catch (error) {
         const message = error instanceof Error ? error.message : "Failed to upload image.";
         setUploadError(message);

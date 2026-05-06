@@ -3,13 +3,13 @@
 import { useAuth } from "@clerk/nextjs";
 import type { Edge, Node } from "@xyflow/react";
 import { useCallback, useEffect, useRef, useState, type FC, type ReactNode } from "react";
-import { X, Clock } from "lucide-react";
 
 import { LeftSidebar } from "@/components/layout/LeftSidebar";
 import { WorkflowPersistence } from "@/components/layout/WorkflowPersistence";
 import { RightSidebar } from "@/components/layout/RightSidebar";
 import { TopBar } from "@/components/layout/TopBar";
 import { ToastViewport } from "@/components/ui/ToastViewport";
+import { WorkflowDashboard } from "@/components/layout/WorkflowDashboard";
 import { useWorkflowStore } from "@/store/workflow-store";
 import { sampleWorkflow } from "@/data/sample-workflow";
 import { useToastStore } from "@/store/toast-store";
@@ -577,87 +577,51 @@ export const WorkflowShell: FC<WorkflowShellProps> = ({ children }) => {
       </div>
 
       {isWorkflowListOpen && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/55"
-          onClick={()=>setIsWorkflowListOpen(false)}
-        >
-          <div
-            className="w-[min(92vw,480px)] rounded-3xl p-6 bg-[#121212] border border-white/10"
-            onClick={(e)=>e.stopPropagation()}
-          >
-            <div className="mb-5 flex items-start justify-between">
-              <div>
-                <h3 className="text-2xl font-semibold">
-                  My Workflows
-                </h3>
-              </div>
+        <WorkflowDashboard
+          isOpen={isWorkflowListOpen}
+          isLoading={isLoadingWorkflowList}
+          workflows={workflowList}
+          onClose={() => setIsWorkflowListOpen(false)}
+          onLoad={(id) => void loadWorkflowById(id)}
+          onDelete={(id, name) => {
+            const ok = window.confirm(
+              `Delete workflow "${name}" permanently? This cannot be undone.`
+            );
+            if (!ok) return;
 
-              <button onClick={()=>setIsWorkflowListOpen(false)}>
-                <X className="h-4 w-4"/>
-              </button>
-            </div>
+            fetch(`/api/workflow/delete?workflowId=${encodeURIComponent(id)}`, {
+              method: "DELETE",
+            })
+              .then((resp) => {
+                if (!resp.ok) throw new Error("Delete failed");
+                setWorkflowList((list) => list.filter((item) => item.id !== id));
+                addToast({
+                  type: "success",
+                  title: "Workflow deleted",
+                  message: `${name} was removed.`,
+                });
 
-            {isLoadingWorkflowList ? (
-              <div className="py-10 text-center text-sm text-neutral-500">Loading...</div>
-            ) : (
-              <div className="max-h-80 overflow-y-auto">
-                {workflowList.length === 0 ? (
-                  <div className="py-10 text-center text-sm text-neutral-500">No workflows found.</div>
-                ) : (
-                  workflowList.map((wf)=>(
-                    <div key={wf.id} className="flex items-center justify-between py-2 px-1">
-                      <button
-                        onClick={()=>void loadWorkflowById(wf.id)}
-                        className="flex-1 text-left py-2 px-2 hover:bg-white/5 rounded-lg transition-colors"
-                      >
-                        <div className="flex items-center justify-between">
-                          <span className="truncate">{wf.name}</span>
-                          <span className="flex items-center gap-1 text-xs text-neutral-400">
-                            <Clock className="h-3 w-3"/>
-                            {formatRelativeTime(wf.updatedAt)}
-                          </span>
-                        </div>
-                      </button>
-
-                      <div className="ml-2 flex items-center gap-2">
-                        <button
-                          type="button"
-                          onClick={async (e)=>{
-                            e.stopPropagation();
-                            const ok = window.confirm(`Delete workflow "${wf.name}" permanently? This cannot be undone.`);
-                            if(!ok) return;
-
-                            try{
-                              const resp = await fetch(`/api/workflow/delete?workflowId=${encodeURIComponent(wf.id)}`, { method: "DELETE" });
-                              if(!resp.ok) throw new Error("Delete failed");
-
-                              setWorkflowList((list)=>list.filter(item=>item.id!==wf.id));
-
-                              addToast({ type: "success", title: "Workflow deleted", message: `${wf.name} was removed.` });
-
-                              if(workflowId === wf.id){
-                                setWorkflowId(null);
-                                setWorkflowName("Untitled");
-                                setNodes([]);
-                                setEdges([]);
-                                lastSavedSignatureRef.current = "";
-                              }
-                            }catch(err){
-                              addToast({ type: "error", title: "Delete failed", message: err instanceof Error? err.message: "Could not delete workflow" });
-                            }
-                          }}
-                          className="rounded-md px-2 py-1 text-xs text-red-400 hover:bg-red-600/10"
-                        >
-                          Delete
-                        </button>
-                      </div>
-                    </div>
-                  ))
-                )}
-              </div>
-            )}
-          </div>
-        </div>
+                if (workflowId === id) {
+                  setWorkflowId(null);
+                  setWorkflowName("Untitled");
+                  setNodes([]);
+                  setEdges([]);
+                  lastSavedSignatureRef.current = "";
+                }
+              })
+              .catch((err) => {
+                addToast({
+                  type: "error",
+                  title: "Delete failed",
+                  message:
+                    err instanceof Error
+                      ? err.message
+                      : "Could not delete workflow",
+                });
+              });
+          }}
+          onCreateNew={createNewWorkflow}
+        />
       )}
     </main>
   );

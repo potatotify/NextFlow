@@ -108,6 +108,7 @@ export const UploadVideoNode = ({ id, data, selected }: NodeProps) => {
           videoUrl: uploadedVideoUrl,
           videoName: file.name,
         });
+        setPreviewSource(uploadedVideoUrl);
       } catch (error) {
         const message = error instanceof Error ? error.message : "Failed to upload video.";
         setUploadError(message);

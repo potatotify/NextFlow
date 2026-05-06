@@ -94,6 +94,8 @@ const writeTempBuffer = (buffer: Buffer, filename: string): { tempDirectory: str
   return { tempDirectory, inputPath };
 };
 
+const IMAGE_WATERMARK_TEXT = "Created with Transloadit";
+
 export const uploadBufferToTransloadit = async (
   buffer: Buffer,
   filename: string,
@@ -114,11 +116,28 @@ export const uploadBufferToTransloadit = async (
             robot: "/upload/handle",
             result: true,
           },
+          watermarked: {
+            robot: "/image/resize",
+            use: ":original",
+            text: [
+              {
+                text: IMAGE_WATERMARK_TEXT,
+                size: 18,
+                font: "Arial",
+                color: "#FFFFFFCC",
+                valign: "bottom",
+                align: "left",
+                x_offset: 20,
+                y_offset: -28,
+              },
+            ],
+            result: true,
+          },
         },
       },
     })) as TransloaditAssemblyStatus;
 
-    const uploadedUrl = extractAssemblyFileUrl(status, [":original", "exported"]);
+    const uploadedUrl = extractAssemblyFileUrl(status, ["watermarked", ":original", "exported"]);
 
     if (!uploadedUrl) {
       throw new Error("Transloadit did not return a file URL for the processed output.");
@@ -138,6 +157,38 @@ export const createVideoUploadSession = async (fileName: string, mimeType: strin
     steps: {
       ":original": {
         robot: "/upload/handle",
+        result: true,
+      },
+      watermark: {
+        robot: "/image/resize",
+        width: 200,
+        height: 40,
+        background: "#00000099",
+        text: [
+          {
+            text: IMAGE_WATERMARK_TEXT,
+            size: 14,
+            font: "Arial",
+            color: "#FFFFFF",
+            valign: "middle",
+            align: "center",
+          },
+        ],
+        result: false,
+      },
+      encoded: {
+        use: ":original",
+        robot: "/video/encode",
+        preset: "mp4-baseline",
+        result: false,
+      },
+      watermarked: {
+        use: ["encoded", "watermark"],
+        robot: "/video/merge",
+        overlay_x: 20,
+        overlay_y: -30,
+        overlay_width: 200,
+        overlay_height: 40,
         result: true,
       },
     },
@@ -187,7 +238,7 @@ export const waitForVideoAssemblyUrl = async (assemblyId: string, timeoutMs = 18
   while (Date.now() - startedAt < timeoutMs) {
     const status = (await client.getAssembly(assemblyId)) as TransloaditAssemblyStatus;
 
-    const uploadedUrl = extractAssemblyFileUrl(status, [":original", "exported"]);
+    const uploadedUrl = extractAssemblyFileUrl(status, ["watermarked", "encoded", ":original", "exported"]);
     if (uploadedUrl) {
       return uploadedUrl;
     }
