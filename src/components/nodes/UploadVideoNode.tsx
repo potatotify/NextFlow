@@ -57,7 +57,7 @@ export const UploadVideoNode = ({ id, data, selected }: NodeProps) => {
 
     onProgress?.(25);
 
-    const uploadResponse = await new Promise<Response>((resolve, reject) => {
+    await new Promise<void>((resolve, reject) => {
       const request = new XMLHttpRequest();
 
       if (!initPayload.uploadUrl) {
@@ -83,21 +83,15 @@ export const UploadVideoNode = ({ id, data, selected }: NodeProps) => {
 
       request.onerror = () => reject(new Error("Failed to upload video."));
       request.onload = () => {
-        resolve(
-          new Response(request.responseText, {
-            status: request.status,
-            statusText: request.statusText,
-          }),
-        );
+        if (request.status < 200 || request.status >= 300) {
+          reject(new Error(request.responseText || `Upload failed with status ${request.status}`));
+        } else {
+          resolve();
+        }
       };
 
       request.send(file);
     });
-
-    if (!uploadResponse.ok) {
-      const text = await uploadResponse.text().catch(() => "");
-      throw new Error(text || "Failed to upload video.");
-    }
 
     onProgress?.(95);
 
