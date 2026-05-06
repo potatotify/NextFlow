@@ -6,6 +6,7 @@ import { HandlePort } from "@/components/nodes/shared/HandlePort";
 import { NodeWrapper } from "@/components/nodes/shared/NodeWrapper";
 import { useWorkflowStore } from "@/store/workflow-store";
 import type { NodeData } from "@/types/nodes";
+import addWatermarkToVideo from "@/lib/client-video-watermark";
 
 export const UploadVideoNode = ({ id, data, selected }: NodeProps) => {
   const removeNode = useWorkflowStore((state) => state.removeNode);
@@ -16,6 +17,8 @@ export const UploadVideoNode = ({ id, data, selected }: NodeProps) => {
   const previewUrlRef = useRef<string | null>(null);
   const [previewSource, setPreviewSource] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [uploadStage, setUploadStage] = useState<string | null>(null);
   const [uploadError, setUploadError] = useState<string | null>(null);
 
   const toBase64 = useCallback((value: string): string => {
@@ -29,7 +32,9 @@ export const UploadVideoNode = ({ id, data, selected }: NodeProps) => {
     return btoa(binary);
   }, []);
 
-  const uploadVideoFile = useCallback(async (file: File): Promise<string> => {
+  const uploadVideoFile = useCallback(async (file: File, onProgress?: (progress: number) => void): Promise<string> => {
+    onProgress?.(10);
+
     const initResponse = await fetch("/api/media/upload/video", {
       method: "POST",
       headers: {
@@ -50,23 +55,51 @@ export const UploadVideoNode = ({ id, data, selected }: NodeProps) => {
       throw new Error(initPayload?.error ?? "Failed to prepare video upload.");
     }
 
-    const uploadResponse = await fetch(initPayload.uploadUrl, {
-      method: "PATCH",
-      headers: {
-        "Tus-Resumable": "1.0.0",
-        "Upload-Offset": "0",
-        "Upload-Length": String(file.size),
-        "Content-Type": "application/offset+octet-stream",
-        "Upload-Metadata":
-          `filename ${toBase64(file.name)},filetype ${toBase64(file.type || "video/mp4")}`,
-      },
-      body: file,
+    onProgress?.(25);
+
+    const uploadResponse = await new Promise<Response>((resolve, reject) => {
+      const request = new XMLHttpRequest();
+
+      if (!initPayload.uploadUrl) {
+        reject(new Error("Failed to prepare video upload."));
+        return;
+      }
+
+      request.open("PATCH", initPayload.uploadUrl, true);
+      request.setRequestHeader("Tus-Resumable", "1.0.0");
+      request.setRequestHeader("Upload-Offset", "0");
+      request.setRequestHeader("Upload-Length", String(file.size));
+      request.setRequestHeader("Content-Type", "application/offset+octet-stream");
+      request.setRequestHeader(
+        "Upload-Metadata",
+        `filename ${toBase64(file.name)},filetype ${toBase64(file.type || "video/mp4")}`,
+      );
+
+      request.upload.onprogress = (event) => {
+        if (!event.lengthComputable) return;
+        const nextProgress = 25 + Math.round((event.loaded / event.total) * 70);
+        onProgress?.(nextProgress);
+      };
+
+      request.onerror = () => reject(new Error("Failed to upload video."));
+      request.onload = () => {
+        resolve(
+          new Response(request.responseText, {
+            status: request.status,
+            statusText: request.statusText,
+          }),
+        );
+      };
+
+      request.send(file);
     });
 
     if (!uploadResponse.ok) {
       const text = await uploadResponse.text().catch(() => "");
       throw new Error(text || "Failed to upload video.");
     }
+
+    onProgress?.(95);
 
     const completeResponse = await fetch("/api/media/upload/video", {
       method: "POST",
@@ -84,6 +117,7 @@ export const UploadVideoNode = ({ id, data, selected }: NodeProps) => {
       throw new Error(completePayload?.error ?? "Failed to upload video.");
     }
 
+    onProgress?.(100);
     return completePayload.url;
   }, [toBase64]);
 
@@ -94,6 +128,8 @@ export const UploadVideoNode = ({ id, data, selected }: NodeProps) => {
       if (!file) return;
       setUploadError(null);
       setIsUploading(true);
+      setUploadProgress(0);
+      setUploadStage("Preparing file");
       const previewUrl = URL.createObjectURL(file);
 
       if (previewUrlRef.current) {
@@ -103,7 +139,21 @@ export const UploadVideoNode = ({ id, data, selected }: NodeProps) => {
       setPreviewSource(previewUrl);
 
       try {
-        const uploadedVideoUrl = await uploadVideoFile(file);
+        // apply watermark client-side before uploading
+        let fileToUpload = file;
+        try {
+          console.log("[UploadVideoNode] Starting watermark...");
+          setUploadStage("Preparing file");
+          fileToUpload = await addWatermarkToVideo(file);
+          console.log("[UploadVideoNode] Watermark success, file size:", fileToUpload.size);
+        } catch (err) {
+          // if watermarking fails, fall back to original file
+          console.warn("[UploadVideoNode] Watermarking failed, uploading original file:", err);
+          fileToUpload = file;
+        }
+
+        setUploadStage("Uploading file");
+        const uploadedVideoUrl = await uploadVideoFile(fileToUpload, setUploadProgress);
         updateNodeData(id, {
           videoUrl: uploadedVideoUrl,
           videoName: file.name,
@@ -114,6 +164,7 @@ export const UploadVideoNode = ({ id, data, selected }: NodeProps) => {
         setUploadError(message);
       } finally {
         setIsUploading(false);
+        setUploadStage(null);
       }
 
       inputElement.value = "";
@@ -200,6 +251,21 @@ export const UploadVideoNode = ({ id, data, selected }: NodeProps) => {
       {uploadError ? (
         <div className="mt-2 rounded-lg border border-(--nf-danger-border) bg-(--nf-danger-bg) px-2 py-1.5 text-[11px] text-(--nf-danger-text)">
           {uploadError}
+        </div>
+      ) : null}
+
+      {isUploading ? (
+        <div className="mt-2 space-y-1.5">
+          <div className="flex items-center justify-between text-[11px] text-(--nf-text-secondary)">
+            <span>{uploadStage ?? "Working..."}</span>
+            <span>{Math.min(uploadProgress, 100)}%</span>
+          </div>
+          <div className="h-2 overflow-hidden rounded-full bg-(--nf-input-bg)">
+            <div
+              className="h-full rounded-full bg-(--nf-text) transition-[width] duration-200 ease-out"
+              style={{ width: `${Math.min(uploadProgress, 100)}%` }}
+            />
+          </div>
         </div>
       ) : null}
 
